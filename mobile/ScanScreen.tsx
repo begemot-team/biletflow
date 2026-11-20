@@ -44,7 +44,7 @@ export default function ScanScreen({ authToken, onBack, onScanSuccess }: ScanScr
         setStatusMessage('Ticket Verified! Ready for Check-In.');
         setStatusType('success');
       } else {
-        setStatusMessage(`Ticket Status: ${result.ticket.status.toUpperCase()}`);
+        setStatusMessage(`Ticket Status: ${result.ticket.status.replace('_', ' ').toUpperCase()}`);
         setStatusType('warning');
       }
     } catch (err: any) {

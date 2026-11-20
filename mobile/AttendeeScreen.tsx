@@ -29,6 +29,7 @@ export default function AttendeeScreen({
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadAttendees();
@@ -36,59 +37,44 @@ export default function AttendeeScreen({
 
   const loadAttendees = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await fetchEventAttendees(eventId, authToken);
       setAttendees(data);
     } catch (err: any) {
-      // Mock fallback data for dev testing if server isn't reachable
-      setAttendees([
-        {
-          id: '1',
-          identifier: 'TICK-1001',
-          status: 'valid',
-          attendee_name: 'Alex Johnson',
-          attendee_email: 'alex@example.com',
-          order_item: { ticket_type: { name: 'VIP Pass' } },
-        },
-        {
-          id: '2',
-          identifier: 'TICK-1002',
-          status: 'used',
-          attendee_name: 'Maria Garcia',
-          attendee_email: 'maria@example.com',
-          order_item: { ticket_type: { name: 'General Admission' } },
-        },
-        {
-          id: '3',
-          identifier: 'TICK-1003',
-          status: 'cancelled',
-          attendee_name: 'David Smith',
-          attendee_email: 'david@example.com',
-          order_item: { ticket_type: { name: 'Early Bird' } },
-        },
-      ]);
+      // Show the real failure instead of placeholder attendees, so staff never
+      // check people in against a list that is not the event's.
+      setAttendees([]);
+      setLoadError(err.message || 'Could not load attendees.');
     } finally {
       setLoading(false);
     }
   };
 
+  const notify = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleManualCheckIn = async (ticket: Ticket) => {
-    setActionLoading(ticket.id);
+    const key = String(ticket.id);
+    if (!ticket.qr_token) {
+      notify('Check-In Failed', 'This ticket has no admission token.');
+      return;
+    }
+    setActionLoading(key);
     try {
-      const updated = await checkInTicket(ticket.identifier, authToken, ticket.id);
+      const updated = await checkInTicket(ticket.qr_token, authToken, ticket.id);
       setAttendees((prev) =>
-        prev.map((t) => (t.id === ticket.id ? { ...t, status: updated.status || 'used' } : t))
+        prev.map((t) => (t.id === ticket.id ? { ...t, ...updated } : t))
       );
-      if (Platform.OS === 'web') {
-        alert(`Checked in ${ticket.attendee_name || ticket.identifier}`);
-      } else {
-        Alert.alert('Check-In Success', `Checked in ${ticket.attendee_name || ticket.identifier}`);
-      }
+      notify('Check-In Success', `Checked in ${ticket.attendee_name || ticket.identifier}`);
     } catch (err: any) {
-      // Fallback local state toggle for dev/testing
-      setAttendees((prev) =>
-        prev.map((t) => (t.id === ticket.id ? { ...t, status: 'used' } : t))
-      );
+      // Keep the list as the server has it; e.g. 409 "already checked in".
+      notify('Check-In Failed', err.message || 'Check-in failed');
     } finally {
       setActionLoading(null);
     }
@@ -105,13 +91,13 @@ export default function AttendeeScreen({
   const renderBadge = (status: Ticket['status']) => {
     const badgeStyles = {
       valid: styles.badgeValid,
-      used: styles.badgeUsed,
+      checked_in: styles.badgeUsed,
       cancelled: styles.badgeCancelled,
       refunded: styles.badgeCancelled,
     };
     return (
       <View style={[styles.badge, badgeStyles[status] || styles.badgeUsed]}>
-        <Text style={styles.badgeText}>{status.toUpperCase()}</Text>
+        <Text style={styles.badgeText}>{status.replace('_', ' ').toUpperCase()}</Text>
       </View>
     );
   };
@@ -141,10 +127,12 @@ export default function AttendeeScreen({
       ) : (
         <FlatList
           data={filteredAttendees}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ paddingBottom: 20 }}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No attendees found matching "{searchQuery}"</Text>
+            <Text style={styles.emptyText}>
+              {loadError || `No attendees found matching "${searchQuery}"`}
+            </Text>
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
@@ -152,7 +140,7 @@ export default function AttendeeScreen({
                 <Text style={styles.name}>{item.attendee_name || 'Anonymous Guest'}</Text>
                 <Text style={styles.email}>{item.attendee_email || item.identifier}</Text>
                 <Text style={styles.ticketType}>
-                  {item.order_item?.ticket_type?.name || 'Standard Ticket'} • ID: {item.identifier}
+                  {item.order_item?.ticket_type?.name || 'Ticket'} • ID: {item.identifier}
                 </Text>
               </View>
 
@@ -162,9 +150,9 @@ export default function AttendeeScreen({
                   <TouchableOpacity
                     style={styles.checkInBtn}
                     onPress={() => handleManualCheckIn(item)}
-                    disabled={actionLoading === item.id}
+                    disabled={actionLoading === String(item.id)}
                   >
-                    {actionLoading === item.id ? (
+                    {actionLoading === String(item.id) ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
                       <Text style={styles.checkInBtnText}>Check In</Text>
