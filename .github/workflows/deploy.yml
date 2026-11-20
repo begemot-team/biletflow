@@ -1,11 +1,11 @@
 name: Deploy to Heroku
 
-# Every push to dev (a merged PR) updates https://begemot-b8b43e7ea8ea.herokuapp.com.
+# Every push to main (a merged release PR from dev) updates https://begemot-b8b43e7ea8ea.herokuapp.com.
 # Heroku builds Dockerfile.heroku from heroku.yml and runs migrations in the release
 # phase; if the build or release fails, the previous version keeps running.
 on:
   push:
-    branches: [dev]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
