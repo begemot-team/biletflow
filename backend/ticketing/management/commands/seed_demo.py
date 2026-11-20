@@ -2,6 +2,11 @@
 
 Safe to run many times: accounts, events, ticket types and the promo campaign are
 looked up by fixed keys, and demo orders are only created once per event.
+
+Event dates are set relative to the day of the run. A demo event whose date has
+passed is moved forward again on the next run, so a long-lived demo database (the
+Heroku app) keeps sellable events; `--refresh-dates` moves every demo event.
+Existing orders and tickets are kept.
 """
 
 from datetime import timedelta
@@ -61,8 +66,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--password", default=DEFAULT_PASSWORD)
+        parser.add_argument(
+            "--refresh-dates",
+            action="store_true",
+            help="Move every demo event to its offset from today, not only past ones.",
+        )
 
-    def handle(self, *args, password, **options):
+    def handle(self, *args, password, refresh_dates=False, **options):
         if not settings.DEBUG and password == DEFAULT_PASSWORD:
             raise CommandError("Pass --password when DEBUG is off; the default is public.")
         with transaction.atomic():
@@ -74,7 +84,7 @@ class Command(BaseCommand):
             attendee = self.account(ATTENDEE, password, "Dana", "Attendee")
             staff = self.account(STAFF, password, "Erlan", "Scanner")
             self.account(ADMIN, password, "Platform", "Admin", superuser=True)
-            events = [self.event(organizer, spec) for spec in EVENTS]
+            events = [self.event(organizer, spec, refresh_dates) for spec in EVENTS]
             jazz = events[0]
             StaffAssignment.objects.get_or_create(event=jazz, user=staff)
             self.campaign(jazz)
@@ -105,13 +115,13 @@ class Command(BaseCommand):
             user.save(update_fields=["email_verified_at"])
         return user
 
-    def event(self, organizer, spec):
+    def event(self, organizer, spec, refresh_dates=False):
         profile = organizer.organizer_profile
+        start = timezone.localtime(timezone.now() + timedelta(days=spec["days"])).replace(
+            hour=19, minute=0, second=0, microsecond=0
+        )
         event = Event.objects.filter(organizer=profile, title=spec["title"]).first()
         if event is None:
-            start = timezone.localtime(timezone.now() + timedelta(days=spec["days"])).replace(
-                hour=19, minute=0, second=0, microsecond=0
-            )
             event = Event.objects.create(
                 organizer=profile,
                 title=spec["title"],
@@ -127,6 +137,14 @@ class Command(BaseCommand):
             for name, price, quantity in spec["types"]:
                 event.ticket_types.create(name=name, price_minor=price, quantity=quantity)
             services.record_audit(event, organizer, "event.seeded", event, "seed_demo")
+        elif refresh_dates or event.starts_at <= timezone.now():
+            previous = timezone.localtime(event.starts_at).strftime("%Y-%m-%d %H:%M")
+            event.starts_at = start
+            event.ends_at = start + timedelta(hours=3)
+            event.save(update_fields=["starts_at", "ends_at"])
+            services.record_audit(
+                event, organizer, "event.seeded", event, f"seed_demo moved it from {previous}"
+            )
         if event.ticket_types.filter(price_minor__gt=0).exists():
             # Paid events go through the real simulated activation (SRS 4.5);
             # repeating it on a second seed run changes nothing.
