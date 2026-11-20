@@ -79,5 +79,9 @@ your piece a little ahead of whoever needs it next.
 
 ## Phase 6 (Nov 10–16) — Stabilize 📍 Final (Nov 16)
 
-- Bug triage, a performance pass on checkout/QR validation, final
-  deployment docs, help rehearse the demo.
+- ✅ Bug triage: `main` brought up to date with `dev` (PR #30), mobile scanner
+  connected to the real API (PR #31), Aizhan's Phase 6 PR #23 reviewed.
+- ✅ Performance pass on checkout/QR validation — `bench_checkout.py`, no oversell
+  under 40 parallel checkouts.
+- ✅ Final deployment docs — `docs/DEPLOYMENT.md`.
+- Help rehearse the demo.

@@ -94,7 +94,7 @@ GitHub Actions повторяет сборку, запуск и эти пров�
 | События, типы билетов, промокоды и Campaign QR, возвраты, временные резервы, поддержка | Рассадка (по SRS вырезается первой) |
 | Активация платных продаж, симуляция checkout, имя посетителя на билете, письма, PDF-билеты, однократный check-in | Реальная оплата (вне рамок MVP) |
 | Сводка продаж и аналитика события по дням (`/events/{id}/analytics`); админка: пользователи, события, активации | Дашборд аналитики Мирата на этом API |
-| PostgreSQL, миграции, Docker Compose со всеми сервисами, API/конкурентные тесты и CI | Публичный production-деплой |
+| PostgreSQL, миграции, Docker Compose со всеми сервисами, API/конкурентные тесты, CI и автодеплой на Heroku | — |
 
 Полная проверка через реальный HTTP API:
 
@@ -115,6 +115,11 @@ docker compose exec -T web python manage.py seed_demo
 как история, актуальный контракт находится в `docs/BACKEND_MVP_API.md`.
 
 ## Деплой на Heroku
+
+Живое приложение: https://begemot-b8b43e7ea8ea.herokuapp.com, обновляется
+автоматически при каждом merge в `dev`. Полная инструкция (config vars, откат,
+мобильный сканер, замеры производительности): [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Ниже — создание нового приложения с нуля.
 
 Production-сборка — один контейнер (`Dockerfile.heroku`, `heroku.yml`): Vite собирает
 React, Django + WhiteNoise отдают его с того же домена, что и `/api`, gunicorn
@@ -146,6 +151,7 @@ heroku run -a biletflow-demo -- python manage.py seed_demo --password "$(heroku 
 
 ## Документация
 
+- [Развёртывание: локально и Heroku](docs/DEPLOYMENT.md)
 - [Инструкция по подключению frontend](docs/FRONTEND_INTEGRATION.md)
 - [Актуальный API backend MVP](docs/BACKEND_MVP_API.md)
 
@@ -157,3 +163,4 @@ heroku run -a biletflow-demo -- python manage.py seed_demo --password "$(heroku 
 - [План Нурсата](docs/PLAN_Nursat.md)
 - [Отчёт по первому этапу](docs/REPORT_Nursat_Phase1.md)
 - [Отчёт по второму этапу](docs/REPORT_Nursat_Phase2.md)
+- [Финальный отчёт (шестой этап)](docs/REPORT_Nursat_Phase6.md)
