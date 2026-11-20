@@ -10,6 +10,7 @@ const MOCK_ATTENDEES = [
     id: '1',
     identifier: 'TICK-1001',
     status: 'valid',
+    qr_token: 'TICK-1001:signature',
     attendee_name: 'Alex Johnson',
     attendee_email: 'alex@example.com',
     order_item: { ticket_type: { name: 'VIP Pass' } },
@@ -17,7 +18,7 @@ const MOCK_ATTENDEES = [
   {
     id: '2',
     identifier: 'TICK-1002',
-    status: 'used',
+    status: 'checked_in',
     attendee_name: 'Maria Garcia',
     attendee_email: 'maria@example.com',
     order_item: { ticket_type: { name: 'General Admission' } },
@@ -39,15 +40,15 @@ describe('AttendeeScreen Component', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     mockFetch.mockReset();
     mockFetch.mockImplementation(async (url: string) => {
-      if (url.includes('/check-in/')) {
+      if (url.includes('/check-in')) {
         return {
           ok: true,
-          json: async () => ({ id: '1', identifier: 'TICK-1001', status: 'used' }),
+          json: async () => ({ id: '1', identifier: 'TICK-1001', status: 'checked_in' }),
         };
       }
       return {
         ok: true,
-        json: async () => MOCK_ATTENDEES,
+        json: async () => ({ count: 3, next: null, previous: null, results: MOCK_ATTENDEES }),
       };
     });
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -111,7 +112,45 @@ describe('AttendeeScreen Component', () => {
     fireEvent.press(checkInBtn);
 
     await waitFor(() => {
-      expect(getAllByText('USED').length).toBeGreaterThan(0);
+      expect(getAllByText('CHECKED IN').length).toBeGreaterThan(0);
     });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/tickets/1/check-in'),
+      expect.objectContaining({ body: JSON.stringify({ qr_token: 'TICK-1001:signature' }) })
+    );
+  });
+
+  it('keeps the ticket valid and reports the error when check-in is rejected', async () => {
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/check-in')) {
+        return { ok: false, json: async () => ({ detail: 'Ticket has already been checked in.' }) };
+      }
+      return { ok: true, json: async () => ({ results: MOCK_ATTENDEES }) };
+    });
+
+    const { getByPlaceholderText, findByText, findByDisplayValue, queryByText } = await render(
+      <AttendeeScreen eventId="1" eventTitle="Tech Conference 2026" authToken="test-token" onBack={jest.fn()} />
+    );
+
+    await findByText('Alex Johnson');
+    fireEvent.changeText(getByPlaceholderText('Search by name, email, or ticket ID...'), 'Alex');
+    await findByDisplayValue('Alex');
+    fireEvent.press(await findByText('Check In'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Check-In Failed', 'Ticket has already been checked in.');
+    });
+    expect(queryByText('CHECKED IN')).toBeNull();
+  });
+
+  it('shows the load error instead of placeholder attendees', async () => {
+    mockFetch.mockResolvedValue({ ok: false, json: async () => ({ detail: 'You do not have permission to perform this action.' }) });
+
+    const { findByText, queryByText } = await render(
+      <AttendeeScreen eventId="1" eventTitle="Tech Conference 2026" authToken="test-token" onBack={jest.fn()} />
+    );
+
+    expect(await findByText('You do not have permission to perform this action.')).toBeTruthy();
+    expect(queryByText('Alex Johnson')).toBeNull();
   });
 });

@@ -42,7 +42,7 @@ describe('ScanScreen Component & QR Validation', () => {
         json: async () => ({
           id: '101',
           identifier: 'VALID-QR-101',
-          status: 'used',
+          status: 'checked_in',
         }),
       });
 
@@ -74,7 +74,7 @@ describe('ScanScreen Component & QR Validation', () => {
       ok: true,
       json: async () => ({
         valid: false,
-        ticket: { id: '102', identifier: 'USED-QR-102', status: 'used' },
+        ticket: { id: '102', identifier: 'USED-QR-102', status: 'checked_in' },
       }),
     });
 
@@ -86,7 +86,7 @@ describe('ScanScreen Component & QR Validation', () => {
     await findByDisplayValue('USED-QR-102');
     fireEvent.press(getByTestId('simulate-button'));
 
-    expect(await findByText('Ticket Status: USED', {}, { timeout: 3000 })).toBeTruthy();
+    expect(await findByText('Ticket Status: CHECKED IN', {}, { timeout: 3000 })).toBeTruthy();
     expect(queryByText('Confirm Check-In')).toBeNull();
   });
 
