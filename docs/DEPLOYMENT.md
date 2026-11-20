@@ -11,7 +11,7 @@
 | База | PostgreSQL 16 в Docker volume | Heroku Postgres (Essential-0) |
 | Миграции | при старте `web` | release-фаза Heroku, до переключения трафика |
 | Письма | `docker compose logs web` | `heroku logs --tail -a begemot` |
-| Деплой | `docker compose up --build` | автоматически при push в `dev` |
+| Деплой | `docker compose up --build` | автоматически при push в `main` |
 
 ## Локально
 
@@ -42,8 +42,9 @@ docker compose exec -T web python manage.py seed_demo
   Фронтенд и `/api` живут на одном домене, CORS не нужен.
 - Release-фаза выполняет `python manage.py migrate`. Если миграция падает,
   релиз отменяется и продолжает работать прошлая версия.
-- Workflow `.github/workflows/deploy.yml`: каждый push в `dev` (то есть каждый
-  смерженный PR) пушит код в Heroku и затем ждёт, пока `/api/health` ответит.
+- Workflow `.github/workflows/deploy.yml`: каждый push в `main` пушит код в Heroku
+  и затем ждёт, пока `/api/health` ответит. Работа идёт в `dev`; на живой сайт
+  она попадает, когда PR `dev` → `main` смержен.
   Можно запустить вручную: Actions → Deploy to Heroku → Run workflow.
   Ключ — секрет репозитория `HEROKU_API_KEY` (окружение `heroku` в GitHub).
 

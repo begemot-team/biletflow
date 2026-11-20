@@ -117,7 +117,7 @@ docker compose exec -T web python manage.py seed_demo
 ## Деплой на Heroku
 
 Живое приложение: https://begemot-b8b43e7ea8ea.herokuapp.com, обновляется
-автоматически при каждом merge в `dev`. Полная инструкция (config vars, откат,
+автоматически при каждом merge в `main` (релиз из `dev`). Полная инструкция (config vars, откат,
 мобильный сканер, замеры производительности): [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 Ниже — создание нового приложения с нуля.
 
