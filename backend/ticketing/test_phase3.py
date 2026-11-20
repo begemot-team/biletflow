@@ -188,6 +188,36 @@ class SeedDemoTests(TestCase):
         paid = Order.objects.get(discount_minor__gt=0)
         self.assertEqual(paid.total_minor, 1440000)
 
+    def test_rerun_moves_past_demo_events_forward_and_keeps_orders(self):
+        call_command("seed_demo", stdout=StringIO())
+        meetup = Event.objects.get(title="[Demo] Python Almaty Meetup")
+        jazz = Event.objects.get(title="[Demo] Almaty Jazz Night")
+        jazz_start = jazz.starts_at
+        past = timezone.now() - timedelta(days=1)
+        Event.objects.filter(pk=meetup.pk).update(starts_at=past, ends_at=past + timedelta(hours=3))
+
+        call_command("seed_demo", stdout=StringIO())
+
+        meetup.refresh_from_db()
+        jazz.refresh_from_db()
+        self.assertGreater(meetup.starts_at, timezone.now() + timedelta(days=6))
+        self.assertEqual(meetup.ends_at - meetup.starts_at, timedelta(hours=3))
+        self.assertEqual(jazz.starts_at, jazz_start)  # still upcoming: left alone
+        self.assertEqual(Order.objects.filter(status="confirmed").count(), 2)
+        self.assertEqual(Ticket.objects.count(), 3)
+
+    def test_refresh_dates_moves_every_demo_event(self):
+        call_command("seed_demo", stdout=StringIO())
+        soon = timezone.now() + timedelta(hours=2)
+        Event.objects.filter(title__startswith="[Demo]").update(
+            starts_at=soon, ends_at=soon + timedelta(hours=3)
+        )
+
+        call_command("seed_demo", "--refresh-dates", stdout=StringIO())
+
+        for event in Event.objects.filter(title__startswith="[Demo]"):
+            self.assertGreater(event.starts_at, timezone.now() + timedelta(days=6))
+
     @override_settings(DEBUG=False)
     def test_default_password_is_refused_outside_debug(self):
         from django.core.management.base import CommandError
