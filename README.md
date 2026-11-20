@@ -163,3 +163,4 @@ heroku run -a biletflow-demo -- python manage.py seed_demo --password "$(heroku 
 - [План Нурсата](docs/PLAN_Nursat.md)
 - [Отчёт по первому этапу](docs/REPORT_Nursat_Phase1.md)
 - [Отчёт по второму этапу](docs/REPORT_Nursat_Phase2.md)
+- [Финальный отчёт (шестой этап)](docs/REPORT_Nursat_Phase6.md)
