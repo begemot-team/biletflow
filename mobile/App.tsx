@@ -119,13 +119,17 @@ export default function App() {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username: email, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json().catch(() => ({}));
 
       if (response.ok) {
-        setAuthToken(data.token || data.access || 'authenticated-user-token');
+        if (!data.access) {
+          showAlert('Login Failed', 'Server did not return an access token.');
+          return;
+        }
+        setAuthToken(data.access);
         setCurrentScreen('EVENTS');
       } else {
         showAlert('Login Failed', data.detail || data.message || 'Invalid credentials');
