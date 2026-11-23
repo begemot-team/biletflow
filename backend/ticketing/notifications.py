@@ -1,7 +1,7 @@
-"""Simulated attendee email (SRS 4.4 and 4.7).
+"""Attendee email and printable tickets (SRS 4.4 and 4.7).
 
-Local development and CI use Django's console/locmem email backends, so these
-messages are printed to the web container log instead of being delivered.
+Development defaults to console email and tests use the in-memory backend.
+Deployments can enable SMTP.
 """
 
 from io import BytesIO
@@ -124,6 +124,7 @@ def send_order_confirmation(order_id):
     if order.status != "confirmed":
         return
     event = order.event
+    account_url = f"{settings.FRONTEND_BASE_URL}/account"
     tickets = list(
         Ticket.objects.filter(order_item__order=order)
         .select_related("order_item__ticket_type")
@@ -153,7 +154,7 @@ def send_order_confirmation(order_id):
         )
     lines += [
         "",
-        f"All tickets are in your account: {settings.FRONTEND_BASE_URL}/tickets",
+        f"All tickets are in your account: {account_url}",
         "Demo environment: no real money was charged.",
     ]
     html_items = "".join(
@@ -165,6 +166,7 @@ def send_order_confirmation(order_id):
         f"<p>Your BiletFlow order #{order.pk} is confirmed.</p>"
         f"<p><b>{escape(event.title)}</b><br>{starts}<br>{escape(event.venue)}</p>"
         f"<ul>{html_items}</ul>"
+        f'<p><a href="{escape(account_url)}">View your tickets</a></p>'
         "<p>QR codes are attached. Demo environment: no real money was charged.</p>"
     )
     message = EmailMultiAlternatives(

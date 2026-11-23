@@ -1,4 +1,5 @@
 import re
+from urllib.parse import parse_qs, urlsplit
 
 from django.core import mail
 from django.test import TestCase, override_settings
@@ -29,18 +30,27 @@ class AuthAPITests(TestCase):
             400,
         )
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    @override_settings(FRONTEND_BASE_URL="https://biletflow.example")
     def test_email_verification_is_single_use_and_reissue_invalidates_old_link(self):
         client = APIClient()
         email = "verify@example.com"
         password = "Long-Secret!9823"
-        response = client.post("/api/auth/register", {"email": email, "password": password})
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.post("/api/auth/register", {"email": email, "password": password})
         self.assertEqual(response.status_code, 201, response.content)
         self.assertEqual(len(mail.outbox), 1)
-        first = dict(re.findall(r"^(uid|token)=(.+)$", mail.outbox[-1].body, re.MULTILINE))
+        message = mail.outbox[-1]
+        self.assertEqual(message.to, [email])
+        first = dict(re.findall(r"^(uid|token)=(.+)$", message.body, re.MULTILINE))
+        link = urlsplit(re.search(r"^https://\S+$", message.body, re.MULTILINE).group(0))
+        self.assertEqual(
+            link._replace(fragment="").geturl(), "https://biletflow.example/verify-email"
+        )
+        self.assertEqual({key: values[0] for key, values in parse_qs(link.fragment).items()}, first)
         token = client.post("/api/auth/login", {"email": email, "password": password}).json()
         client.credentials(HTTP_AUTHORIZATION="Bearer " + token["access"])
-        self.assertEqual(client.post("/api/auth/verify-email/request").status_code, 200)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(client.post("/api/auth/verify-email/request").status_code, 200)
         second = dict(re.findall(r"^(uid|token)=(.+)$", mail.outbox[-1].body, re.MULTILINE))
         client.credentials()
         self.assertEqual(client.post("/api/auth/verify-email", first).status_code, 400)
@@ -48,19 +58,14 @@ class AuthAPITests(TestCase):
         self.assertEqual(client.post("/api/auth/verify-email", second).status_code, 400)
         self.assertTrue(User.objects.get(email=email).email_verified_at)
 
-    @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    @override_settings(
-        EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
-        FRONTEND_BASE_URL="https://biletflow.example",
-    )
+    @override_settings(FRONTEND_BASE_URL="https://biletflow.example")
     def test_password_reset_email_links_to_the_frontend_reset_page(self):
-        from urllib.parse import parse_qs, urlsplit
-
         client = APIClient()
         email = "link@example.com"
         client.post("/api/auth/register", {"email": email, "password": "Long-Secret!9823"})
-        mail.outbox.clear()
-        self.assertEqual(client.post("/api/auth/reset-password", {"email": email}).status_code, 200)
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.post("/api/auth/reset-password", {"email": email})
+        self.assertEqual(response.status_code, 200)
         body = mail.outbox[-1].body
 
         link = re.search(r"^https://\S+$", body, re.MULTILINE).group(0)
@@ -95,21 +100,24 @@ class AuthAPITests(TestCase):
         email = "reset@example.com"
         old_password = "Long-Secret!9823"
         new_password = "Different-Secret!7381"
-        self.assertEqual(
-            client.post(
-                "/api/auth/register", {"email": email, "password": old_password}
-            ).status_code,
-            201,
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = client.post("/api/auth/register", {"email": email, "password": old_password})
+        self.assertEqual(response.status_code, 201)
         tokens = client.post("/api/auth/login", {"email": email, "password": old_password}).json()
         self.assertEqual(
             client.post("/api/auth/reset-password", {"email": "missing@example.com"}).status_code,
             200,
         )
         self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(client.post("/api/auth/reset-password", {"email": email}).status_code, 200)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(
+                client.post("/api/auth/reset-password", {"email": email}).status_code, 200
+            )
         first = dict(re.findall(r"^(uid|token)=(.+)$", mail.outbox[-1].body, re.MULTILINE))
-        self.assertEqual(client.post("/api/auth/reset-password", {"email": email}).status_code, 200)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(
+                client.post("/api/auth/reset-password", {"email": email}).status_code, 200
+            )
         second = dict(re.findall(r"^(uid|token)=(.+)$", mail.outbox[-1].body, re.MULTILINE))
         self.assertEqual(
             client.post(

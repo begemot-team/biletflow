@@ -48,7 +48,10 @@ refresh or use protected API routes. Roles and event ownership come from live
 database records. Password validation and case-insensitive email uniqueness apply.
 Auth routes have a 60/minute per-IP local-cache throttle. Production with
 multiple workers needs a shared cache or proxy-level rate limits.
-Registration sends a verification token to console email in local development.
+Registration sends a one-time link to `/verify-email`. The web page submits
+its `uid` and `token` to the verification API. Password reset emails link to
+`/reset-password`. Local development uses console email by default. The
+configured SMTP backend delivers both messages and the ticket confirmation.
 The API never returns verification or reset tokens. Reissuing either token
 invalidates its predecessor. Password reset requests return the same response
 for unknown or inactive accounts. Email verification is tracked separately

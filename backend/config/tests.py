@@ -41,7 +41,13 @@ class FrontendAppTests(TestCase):
         with tempfile.TemporaryDirectory() as dist:
             Path(dist, "index.html").write_text("<div id=root></div>")
             with override_settings(FRONTEND_DIST=Path(dist)):
-                for path in ("/", "/events/5", "/admin/login", "/organizer/events/1/activation"):
+                for path in (
+                    "/",
+                    "/events/5",
+                    "/admin/login",
+                    "/organizer/events/1/activation",
+                    "/verify-email",
+                ):
                     response = self.client.get(path)
                     self.assertEqual(response.status_code, 200, path)
                     self.assertIn(b"id=root", b"".join(response.streaming_content))

@@ -120,8 +120,18 @@ STORAGES = {
 FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST", BASE_DIR / "frontend_dist"))
 WHITENOISE_ROOT = FRONTEND_DIST if FRONTEND_DIST.is_dir() else None
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "BiletFlow Demo <noreply@example.com>"
+EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "BiletFlow Demo <noreply@example.com>")
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.resend.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "resend")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1").lower() in {"1", "true"}
+EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", "5"))
+if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not (
+    EMAIL_HOST_PASSWORD and os.environ.get("DEFAULT_FROM_EMAIL")
+):
+    raise ImproperlyConfigured("Set EMAIL_HOST_PASSWORD and DEFAULT_FROM_EMAIL to enable SMTP.")
 # Simulated processing fee in basis points (300 = 3%), withheld from organizer payouts.
 PROCESSING_FEE_BPS = int(os.environ.get("PROCESSING_FEE_BPS", "300"))
 # One-time simulated Paid Sales Activation Fee per event, in tiyn (SRS 3.3): 5 000 KZT.
