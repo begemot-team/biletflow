@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client.js'
 import { allPages } from '../api/pages.js'
-import { actionLabel, eventStatus, statusLabel } from '../utils/eventHistory.js'
+import { ACTIVITY_LABELS, actionLabel, eventStatus, statusLabel } from '../utils/eventHistory.js'
 
 const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const auditDateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Almaty' })
 const statuses = ['all', 'draft', 'upcoming', 'active', 'completed', 'cancelled', 'suspended']
 
 const badge = {
@@ -16,43 +17,30 @@ const badge = {
   suspended: 'bg-red-100 text-red-800',
 }
 
-export default function EventHistory() {
-  const [events, setEvents] = useState(null)
-  const [status, setStatus] = useState('all')
-  const [eventId, setEventId] = useState('')
+function AuditEntries({ eventId, query }) {
   const [entries, setEntries] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState('')
   const [loadingMore, setLoadingMore] = useState(false)
+  const path = `/events/${eventId}/audit-log?${query ? `${query}&` : ''}page=`
 
   useEffect(() => {
     let active = true
-    allPages('/me/events').then((items) => {
-      if (!active) return
-      setEvents(items)
-      if (items.length) setEventId(String(items[0].id))
-    }).catch((failure) => active && setError(failure.message))
-    return () => { active = false }
-  }, [])
-
-  useEffect(() => {
-    if (!eventId) return
-    let active = true
-    api(`/events/${eventId}/audit-log?page=1`).then((data) => {
+    api(`${path}1`).then((data) => {
       if (!active) return
       setEntries(data.results)
       setHasMore(Boolean(data.next))
     }).catch((failure) => active && setError(failure.message))
     return () => { active = false }
-  }, [eventId])
+  }, [path])
 
   async function loadMore() {
     const nextPage = page + 1
     setLoadingMore(true)
     setError('')
     try {
-      const data = await api(`/events/${eventId}/audit-log?page=${nextPage}`)
+      const data = await api(`${path}${nextPage}`)
       setEntries((known) => [...known, ...data.results])
       setPage(nextPage)
       setHasMore(Boolean(data.next))
@@ -63,8 +51,108 @@ export default function EventHistory() {
     }
   }
 
+  return (
+    <>
+      {error && <p role="alert" className="mt-4 text-red-700">{error}</p>}
+      {entries === null && !error && <p className="mt-4">Loading activity…</p>}
+      {entries?.length === 0 && <p className="mt-4 text-gray-600">No activity matches these filters.</p>}
+      {entries?.length > 0 && (
+        <ol className="mt-4 space-y-3 border-l-2 border-gray-200 pl-5">
+          {entries.map((entry) => (
+            <li className="relative rounded-xl border bg-white p-4 before:absolute before:-left-[1.7rem] before:top-5 before:h-3 before:w-3 before:rounded-full before:bg-indigo-600" key={entry.id}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <strong>{actionLabel(entry.action)}</strong>
+                <time className="text-xs text-gray-500" dateTime={entry.created_at}>{auditDateTime.format(new Date(entry.created_at))}</time>
+              </div>
+              {entry.description && <p className="mt-1 text-sm text-gray-700">{entry.description}</p>}
+              <p className="mt-2 text-xs text-gray-500">{entry.actor ? `Actor #${entry.actor}` : 'System'} · {entry.entity_type} #{entry.entity_id}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {hasMore && <button className="mt-4 rounded border px-4 py-2" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load older activity'}</button>}
+    </>
+  )
+}
+
+function EventActivity({ event }) {
+  const navigate = useNavigate()
+  const [query, setQuery] = useState('')
+  const [duplicating, setDuplicating] = useState(false)
+  const [duplicateError, setDuplicateError] = useState('')
+  const canDuplicate = ['completed', 'cancelled'].includes(eventStatus(event))
+
+  function applyFilters(submit) {
+    submit.preventDefault()
+    const filters = new URLSearchParams()
+    for (const [name, value] of new FormData(submit.currentTarget)) {
+      if (value) filters.set(name, value)
+    }
+    setQuery(filters.toString())
+  }
+
+  async function duplicate() {
+    setDuplicating(true)
+    setDuplicateError('')
+    try {
+      const created = await api(`/events/${event.id}/duplicate`, { method: 'POST' })
+      navigate(`/organizer/events/${created.id}/edit`)
+    } catch (failure) {
+      setDuplicateError(failure.message)
+    } finally {
+      setDuplicating(false)
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 className="text-xl font-semibold">Activity · {event.title}</h2><p className="text-sm text-gray-600">Newest first · Almaty time</p></div>
+        <div className="flex flex-wrap gap-3">
+          <Link to={`/organizer/events/${event.id}`} className="text-indigo-600 underline">Open event</Link>
+          {canDuplicate && <button type="button" disabled={duplicating} onClick={duplicate} className="text-indigo-600 underline disabled:opacity-50">
+            {duplicating ? 'Duplicating…' : 'Duplicate as draft'}
+          </button>}
+        </div>
+      </div>
+      {duplicateError && <p role="alert" className="mt-3 text-red-700">{duplicateError}</p>}
+      <form onSubmit={applyFilters} onReset={() => setQuery('')} className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="block text-sm">From date
+          <input type="date" name="date_from" className="mt-1 block rounded border p-2" />
+        </label>
+        <label className="block text-sm">To date
+          <input type="date" name="date_to" className="mt-1 block rounded border p-2" />
+        </label>
+        <label className="block text-sm">Activity type
+          <select name="action" className="mt-1 block max-w-full rounded border p-2">
+            <option value="">All activity</option>
+            {Object.entries(ACTIVITY_LABELS).map(([action, label]) => <option key={action} value={action}>{label}</option>)}
+          </select>
+        </label>
+        <button type="submit" className="rounded bg-black px-4 py-2 text-white">Apply filters</button>
+        <button type="reset" className="rounded border px-4 py-2">Clear filters</button>
+      </form>
+      <AuditEntries key={query} eventId={event.id} query={query} />
+    </section>
+  )
+}
+
+export default function EventHistory() {
+  const [events, setEvents] = useState(null)
+  const [status, setStatus] = useState('all')
+  const [eventId, setEventId] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    allPages('/me/events')
+      .then((items) => active && setEvents(items))
+      .catch((failure) => active && setError(failure.message))
+    return () => { active = false }
+  }, [])
+
   const visible = events?.filter((item) => status === 'all' || eventStatus(item) === status) ?? []
-  const current = events?.find((item) => String(item.id) === eventId)
+  const current = visible.find((item) => item.id === eventId) ?? visible[0]
 
   return (
     <main>
@@ -94,11 +182,11 @@ export default function EventHistory() {
               <tbody className="divide-y">
                 {visible.map((item) => {
                   const value = eventStatus(item)
-                  return <tr key={item.id} className={String(item.id) === eventId ? 'bg-indigo-50' : ''}>
+                  return <tr key={item.id} className={item.id === current?.id ? 'bg-indigo-50' : ''}>
                     <td className="p-3"><strong>{item.title}</strong><span className="block text-xs text-gray-500">{item.venue}</span></td>
                     <td className="whitespace-nowrap p-3">{dateTime.format(new Date(item.starts_at))}<span className="block text-xs text-gray-500">to {dateTime.format(new Date(item.ends_at))}</span></td>
                     <td className="p-3"><span className={`rounded px-2 py-1 text-xs font-medium ${badge[value]}`}>{statusLabel(value)}</span></td>
-                    <td className="p-3 text-right"><button className="text-indigo-600 underline" onClick={() => { setEntries(null); setPage(1); setError(''); setEventId(String(item.id)) }}>View activity</button></td>
+                    <td className="p-3 text-right"><button className="text-indigo-600 underline" onClick={() => setEventId(item.id)}>View activity</button></td>
                   </tr>
                 })}
               </tbody>
@@ -108,31 +196,7 @@ export default function EventHistory() {
       </section>
 
       {error && <p role="alert" className="mt-6 rounded border border-red-300 bg-red-50 p-4 text-red-700">{error}</p>}
-      {current && (
-        <section className="mt-8">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div><h2 className="text-xl font-semibold">Activity · {current.title}</h2><p className="text-sm text-gray-600">Newest first. Existing rows are never edited.</p></div>
-            <Link to={`/organizer/events/${current.id}`} className="text-indigo-600 underline">Open event</Link>
-          </div>
-          {entries === null && !error && <p className="mt-4">Loading activity…</p>}
-          {entries?.length === 0 && <p className="mt-4 text-gray-600">No activity has been recorded for this event.</p>}
-          {entries?.length > 0 && (
-            <ol className="mt-4 space-y-3 border-l-2 border-gray-200 pl-5">
-              {entries.map((entry) => (
-                <li className="relative rounded-xl border bg-white p-4 before:absolute before:-left-[1.7rem] before:top-5 before:h-3 before:w-3 before:rounded-full before:bg-indigo-600" key={entry.id}>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <strong>{actionLabel(entry.action)}</strong>
-                    <time className="text-xs text-gray-500" dateTime={entry.created_at}>{dateTime.format(new Date(entry.created_at))}</time>
-                  </div>
-                  {entry.description && <p className="mt-1 text-sm text-gray-700">{entry.description}</p>}
-                  <p className="mt-2 text-xs text-gray-500">{entry.actor ? `Actor #${entry.actor}` : 'System'} · {entry.entity_type} #{entry.entity_id}</p>
-                </li>
-              ))}
-            </ol>
-          )}
-          {hasMore && <button className="mt-4 rounded border px-4 py-2" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load older activity'}</button>}
-        </section>
-      )}
+      {current && <EventActivity key={current.id} event={current} />}
     </main>
   )
 }

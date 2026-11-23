@@ -54,6 +54,12 @@ function EventActivation() {
 
   if (error) return <p role="alert" className="text-red-600">{error}</p>
   if (!state) return <p>Loading…</p>
+  if (event.cancelled_at) return (
+    <main>
+      <p>This event has been cancelled. Paid sales are closed.</p>
+      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-indigo-600 underline">View sales and orders</Link>
+    </main>
+  )
 
   const done = Object.fromEntries(state.checklist.map((item) => [item.step, item.done]))
   const missing = missingBeforeFee(state)

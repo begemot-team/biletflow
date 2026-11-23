@@ -40,21 +40,23 @@ class ConcurrentSalesTests(TransactionTestCase):
         )
         activate_paid_sales(self.event.pk)
 
-    def race(self, path, payload):
+    def race(self, path, payload, *, against=None):
         barrier = Barrier(2)
 
-        def request():
+        def request(endpoint):
             close_old_connections()
             try:
                 client = APIClient()
                 client.force_authenticate(User.objects.get(pk=self.user.pk))
                 barrier.wait(timeout=10)
-                return client.post(path, payload, format="json").status_code
+                url, body = endpoint
+                return client.post(url, body, format="json").status_code
             finally:
                 close_old_connections()
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            return sorted(executor.map(lambda _: request(), range(2)))
+            first = (path, payload)
+            return sorted(executor.map(request, (first, against or first)))
 
     def test_last_ticket_can_only_be_reserved_once(self):
         self.assertEqual(
@@ -121,3 +123,22 @@ class ConcurrentSalesTests(TransactionTestCase):
         self.assertEqual(statuses, [200, 409])
         self.assertEqual(PromoRedemption.objects.count(), 1)
         self.assertEqual(PromoRedemption.objects.get().discount_minor, 50)
+
+    def test_check_in_racing_event_cancellation_has_a_consistent_outcome(self):
+        order = reserve(self.user, self.event.pk, [{"ticket_type": self.kind.pk, "quantity": 1}])
+        client = APIClient()
+        client.force_authenticate(self.user)
+        self.assertEqual(
+            client.post(f"/api/orders/{order.pk}/checkout", {"outcome": "success"}).status_code, 200
+        )
+        ticket = Ticket.objects.get()
+        statuses = self.race(
+            f"/api/events/{self.event.pk}/cancel",
+            {},
+            against=(f"/api/tickets/{ticket.pk}/check-in", {"qr_token": qr_token(ticket)}),
+        )
+        ticket.refresh_from_db()
+        self.event.refresh_from_db()
+        self.assertIsNotNone(self.event.cancelled_at)
+        self.assertIn(ticket.status, {"checked_in", "cancelled"})
+        self.assertEqual(statuses, [200, 200] if ticket.status == "checked_in" else [200, 409])

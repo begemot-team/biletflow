@@ -9,13 +9,16 @@ export function eventStatus(event, now = new Date()) {
   return 'completed'
 }
 
-const ACTIONS = {
+export const ACTIVITY_LABELS = {
   'event.created': 'Event created',
   'event.updated': 'Event details updated',
   'event.published': 'Event published',
   'event.unpublished': 'Event unpublished',
+  'event.cancelled': 'Event cancelled',
   'event.suspended': 'Event suspended',
+  'event.unsuspended': 'Event suspension lifted',
   'event.restored': 'Event restored',
+  'event.seeded': 'Demo event prepared',
   'ticket_type.created': 'Ticket type created',
   'ticket_type.updated': 'Ticket type updated',
   'ticket_type.deleted': 'Ticket type deleted',
@@ -32,17 +35,21 @@ const ACTIONS = {
   'staff.assigned': 'Event Admin assigned',
   'staff.removed': 'Event Admin removed',
   'support.opened': 'Support case opened',
+  'support.assigned': 'Support case assigned',
   'support.status_changed': 'Support status changed',
   'activation.identity_verified': 'Identity check completed',
   'activation.payout_connected': 'Payout account connected',
   'activation.terms_accepted': 'Paid-sales terms accepted',
   'activation.fee_paid': 'Activation fee paid',
+  'activation.fee_failed': 'Activation fee payment failed',
+  'activation.activated': 'Paid sales activated',
   'activation.suspended': 'Paid sales suspended',
+  'activation.unsuspended': 'Paid-sales suspension lifted',
   'activation.restored': 'Paid sales restored',
 }
 
 export function actionLabel(action) {
-  return ACTIONS[action] ?? action.split('.').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+  return ACTIVITY_LABELS[action] ?? action.split('.').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }
 
 export const statusLabel = (status) => ({

@@ -64,7 +64,9 @@ function Ticket() {
             <h1 className="text-2xl font-bold">{event.title}</h1>
             <p className="mt-1 text-gray-600">{dateFmt.format(new Date(event.starts_at))}</p>
             <p className="text-gray-600">{event.venue}</p>
-            <AddToCalendar event={event} className="mt-2 justify-center" />
+            {event.cancelled_at
+              ? <p role="status" className="mt-2 text-amber-800">This event has been cancelled.</p>
+              : <AddToCalendar event={event} className="mt-2 justify-center" />}
           </>
         ) : (
           <h1 className="text-2xl font-bold">

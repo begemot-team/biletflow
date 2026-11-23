@@ -59,12 +59,13 @@ approved pet-project MVP.
 
 | Method and path | Behavior |
 | --- | --- |
-| GET `/events` | Published events from active organizers |
+| GET `/events` | Published, non-cancelled events from active organizers |
 | POST `/events` | Organizer creates a draft |
 | GET `/events/{id}` | Public if published; drafts visible to owner/admin only |
 | PATCH `/events/{id}` | Owner/admin updates event |
 | DELETE `/events/{id}` | Owner/admin deletes a draft only if it has no orders, campaigns or audit history |
 | POST `/events/{id}/publish` | `{published: true}` or `{published: false}` |
+| POST `/events/{id}/cancel` | Owner/admin cancels a draft, upcoming or ongoing event and receives the event with `cancelled_at`. Repeating the request returns the existing cancellation. |
 | POST `/events/{id}/duplicate` | Owner/admin copies event fields + ticket types into a new unpublished draft, 201 |
 | GET `/events/{id}/ticket-types` | Ticket types; hidden types visible to owner/admin only |
 | POST `/events/{id}/ticket-types` | Owner/admin adds a type |
@@ -75,6 +76,14 @@ approved pet-project MVP.
 | GET `/events/{id}/orders` | Owner/admin list of confirmed, cancelled and refunded orders with the action still allowed (see Cancellations and refunds) |
 | GET/POST `/events/{id}/staff` | Owner/platform admin lists assignments or grants Event Admin to an existing active user by `{email, can_check_in, can_manage_support}` (support defaults to false) |
 | DELETE `/events/{id}/staff/{user_id}` | Owner/platform admin removes an assignment, 204 |
+
+Cancellation stops new sales and closes existing holds. Unused tickets become
+`cancelled`, and free registrations without check-ins are cancelled. Existing
+check-ins and historical records remain available. Eligible paid orders can be
+refunded through the regular order refund endpoint. Purchasers with confirmed
+orders are notified after commit using the configured mail backend. Previously
+public event pages show the cancellation, and the organizer can still open the
+sales and audit history or duplicate the configuration into a new draft.
 
 Create event:
 
@@ -325,7 +334,7 @@ Cancel registration buttons.
 
 | Method and path | Behavior |
 | --- | --- |
-| GET `/events/{id}/audit-log` | Organizer/admin reads the event's append-only activity timeline |
+| GET `/events/{id}/audit-log` | Organizer/admin reads the event's append-only activity timeline. Optional `date_from`, `date_to` (inclusive `YYYY-MM-DD` in Almaty time) and `action` (exact type such as `event.cancelled`). |
 
 AuditLog entries carry event, actor, action, entity_type, entity_id,
 description and created_at, newest first. Event and ticket-type edits,
