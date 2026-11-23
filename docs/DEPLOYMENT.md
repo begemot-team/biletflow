@@ -10,7 +10,7 @@
 | Сервер | Django `runserver` + Vite dev server | gunicorn (3 воркера), React собран и отдаётся через WhiteNoise |
 | База | PostgreSQL 16 в Docker volume | Heroku Postgres (Essential-0) |
 | Миграции | при старте `web` | release-фаза Heroku, до переключения трафика |
-| Письма | `docker compose logs web` | `heroku logs --tail -a begemot` |
+| Письма | консоль Django или SMTP | консоль Django по умолчанию, Resend при включённом SMTP |
 | Деплой | `docker compose up --build` | автоматически при push в `main` |
 
 ## Локально
@@ -61,6 +61,28 @@ docker compose exec -T web python manage.py seed_demo
 
 `DJANGO_DEBUG` на Heroku не задаётся: без него включены HTTPS-редирект и
 secure cookies. Посмотреть: `heroku config -a begemot`.
+
+### Транзакционные письма через Resend
+
+По умолчанию письма выводятся в лог `web`. Для SMTP укажите следующие
+переменные в локальном `.env` или в Heroku Config Vars. Сначала подтвердите
+домен отправителя в Resend и создайте ключ отправки для этого домена.
+
+| Переменная | Значение |
+| --- | --- |
+| `EMAIL_BACKEND` | `django.core.mail.backends.smtp.EmailBackend` |
+| `EMAIL_HOST` | `smtp.resend.com` |
+| `EMAIL_PORT` | `587` |
+| `EMAIL_HOST_USER` | `resend` |
+| `EMAIL_USE_TLS` | `1` (STARTTLS) |
+| `EMAIL_TIMEOUT` | `5` секунд |
+| `EMAIL_HOST_PASSWORD` | Ключ отправки Resend |
+| `DEFAULT_FROM_EMAIL` | Адрес из подтверждённого домена, например `BiletFlow <tickets@notify.example.com>` |
+
+`FRONTEND_BASE_URL` определяет адрес ссылок на подтверждение email, сброс
+пароля и билеты. Для проверки откройте письмо регистрации, подтвердите
+адрес, завершите тестовую покупку и запросите сброс пароля на тестовый ящик.
+Ошибки SMTP попадают в серверный лог, созданные аккаунты и заказы сохраняются.
 
 ### Частые действия
 
