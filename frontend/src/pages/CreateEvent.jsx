@@ -125,6 +125,14 @@ function CreateEvent() {
     }
   }
 
+  if (event?.cancelled_at) return (
+    <main>
+      <h2 className="text-2xl">{event.title}</h2>
+      <p className="mt-2">This event has been cancelled.</p>
+      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-indigo-600 underline">View sales and orders</Link>
+    </main>
+  )
+
   return (
     <main className="grid gap-8 md:grid-cols-2 md:divide-x md:divide-gray-300">
       <form onSubmit={saveDraft} className="space-y-4 rounded-lg bg-gray-200 p-6" noValidate>

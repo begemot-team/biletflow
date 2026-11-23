@@ -9,7 +9,7 @@ from pathlib import Path
 
 import qrcode
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mass_mail
 from django.utils import timezone
 from django.utils.html import escape
 from qrcode.image.svg import SvgPathImage
@@ -238,6 +238,15 @@ def send_order_closed(order_id):
     EmailMultiAlternatives(
         subject=subject, body="\n".join(lines) + "\n", to=[order.purchaser.email]
     ).send()
+
+
+def send_event_cancelled(event, recipients):
+    subject = "BiletFlow: event cancelled"
+    body = (
+        f"{event.title} has been cancelled. Its tickets can no longer be used for entry.\n\n"
+        "If you paid for a ticket, contact the organizer about a refund."
+    )
+    send_mass_mail((subject, body, None, [recipient]) for recipient in recipients)
 
 
 def send_support_notification(case_id, recipient, summary):
