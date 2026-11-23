@@ -45,6 +45,7 @@ from .serializers import (
     ActivationSerializer,
     AdminActivationSerializer,
     AttendeeSerializer,
+    AuditLogFilterSerializer,
     AuditLogSerializer,
     CampaignSerializer,
     CheckoutSerializer,
@@ -76,6 +77,7 @@ class EventList(generics.ListCreateAPIView):
     def get_queryset(self):
         return Event.objects.filter(
             published=True,
+            cancelled_at__isnull=True,
             suspended_at__isnull=True,
             organizer__user__is_active=True,
             visibility="public",
@@ -110,6 +112,8 @@ class EventDetail(generics.RetrieveUpdateDestroyAPIView):
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         event = get_object_or_404(self.get_queryset().select_for_update(), pk=kwargs["pk"])
+        if event.cancelled_at:
+            raise services.Conflict("A cancelled event cannot be edited.")
         serializer = self.get_serializer(event, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         if serializer.validated_data.get("capacity", event.capacity) < services.reserved(event.pk):
@@ -143,6 +147,8 @@ class Publish(APIView):
         serializer = PublishSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         event = get_object_or_404(managed_events(request.user).select_for_update(), pk=pk)
+        if event.cancelled_at:
+            raise services.Conflict("A cancelled event cannot change publication status.")
         if serializer.validated_data["published"] and event.starts_at <= timezone.now():
             raise services.Conflict("Cannot publish an event that has started.")
         if serializer.validated_data["published"] and event.suspended_at:
@@ -156,6 +162,11 @@ class Publish(APIView):
             event,
         )
         return Response(EventSerializer(event).data)
+
+
+class CancelEvent(APIView):
+    def post(self, request, pk):
+        return Response(EventSerializer(services.cancel_event(request.user, pk)).data)
 
 
 class DuplicateEvent(APIView):
@@ -173,6 +184,7 @@ class DuplicateEvent(APIView):
             starts_at=original.starts_at,
             ends_at=original.ends_at,
             capacity=original.capacity,
+            refund_policy=original.refund_policy,
             published=False,
         )
         # Duplication copies configuration only: ticket-type setup is carried
@@ -220,6 +232,8 @@ class TicketTypeList(generics.ListCreateAPIView):
         event = get_object_or_404(
             managed_events(self.request.user).select_for_update(), pk=self.kwargs["pk"]
         )
+        if event.cancelled_at:
+            raise services.Conflict("A cancelled event cannot change its ticket types.")
         kind = serializer.save(event=event)
         services.record_audit(event, self.request.user, "ticket_type.created", kind)
 
@@ -231,7 +245,9 @@ class TicketTypeDetail(generics.UpdateAPIView):
     @transaction.atomic
     def patch(self, request, pk):
         kind = get_object_or_404(TicketType, pk=pk, event__in=managed_events(request.user))
-        Event.objects.select_for_update().get(pk=kind.event_id)
+        event = Event.objects.select_for_update().get(pk=kind.event_id)
+        if event.cancelled_at:
+            raise services.Conflict("A cancelled event cannot change its ticket types.")
         kind.refresh_from_db()
         serializer = self.get_serializer(kind, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -636,7 +652,19 @@ class EventAuditLog(generics.ListAPIView):
 
     def get_queryset(self):
         event = get_object_or_404(managed_events(self.request.user), pk=self.kwargs["pk"])
-        return AuditLog.objects.filter(event=event)
+        query = AuditLogFilterSerializer(data=self.request.query_params)
+        query.is_valid(raise_exception=True)
+        data = query.validated_data
+        filters = {
+            field: data[param]
+            for param, field in (
+                ("date_from", "created_at__date__gte"),
+                ("date_to", "created_at__date__lte"),
+                ("action", "action"),
+            )
+            if param in data
+        }
+        return AuditLog.objects.filter(event=event, **filters)
 
 
 class AdminEventSuspend(APIView):

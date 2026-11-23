@@ -105,11 +105,15 @@ function EventDetail() {
       <p className="mt-3 text-gray-600">
         {dateFmt.format(new Date(event.starts_at))} · {event.venue}
       </p>
-      <AddToCalendar event={event} className="mt-2" />
+      {event.cancelled_at ? (
+        <p role="status" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          This event has been cancelled. Ticket sales are closed.
+        </p>
+      ) : <AddToCalendar event={event} className="mt-2" />}
       {event.description && <p className="mt-6 whitespace-pre-line">{event.description}</p>}
 
-      <h2 className="mt-10 text-xl font-semibold">Tickets</h2>
-      {ticketTypes.length === 0 ? (
+      {!event.cancelled_at && <h2 className="mt-10 text-xl font-semibold">Tickets</h2>}
+      {!event.cancelled_at && (ticketTypes.length === 0 ? (
         <p className="mt-2 text-gray-600">Tickets are not on sale yet.</p>
       ) : (
         <>
@@ -163,7 +167,7 @@ function EventDetail() {
             </button>
           </div>
         </>
-      )}
+      ))}
     </main>
   )
 }

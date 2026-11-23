@@ -121,6 +121,8 @@ class Command(BaseCommand):
             hour=19, minute=0, second=0, microsecond=0
         )
         event = Event.objects.filter(organizer=profile, title=spec["title"]).first()
+        if event and event.cancelled_at:
+            return event
         if event is None:
             event = Event.objects.create(
                 organizer=profile,
@@ -173,7 +175,7 @@ class Command(BaseCommand):
         )
 
     def order(self, user, event, items, promo=None):
-        if event.orders.filter(purchaser=user, status="confirmed").exists():
+        if event.cancelled_at or event.orders.filter(purchaser=user, status="confirmed").exists():
             return
         kinds = list(event.ticket_types.all())
         order = services.reserve(
