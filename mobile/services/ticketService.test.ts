@@ -20,7 +20,7 @@ describe('ticketService QR validation & check-in API', () => {
       json: async () => mockResponse,
     });
 
-    const result = await verifyTicket('QR-VALID-1', 'staff-jwt-token');
+    const result = await verifyTicket('QR-VALID-1', 'staff-jwt-token', '10');
 
     expect(mockFetch).toHaveBeenCalledWith(`${API_BASE_URL}/tickets/verify`, {
       method: 'POST',
@@ -28,7 +28,7 @@ describe('ticketService QR validation & check-in API', () => {
         'Content-Type': 'application/json',
         Authorization: 'Bearer staff-jwt-token',
       },
-      body: JSON.stringify({ qr_token: 'QR-VALID-1' }),
+      body: JSON.stringify({ qr_token: 'QR-VALID-1', event_id: '10' }),
     });
     expect(result.valid).toBe(true);
     expect(result.ticket.status).toBe('valid');
@@ -40,12 +40,12 @@ describe('ticketService QR validation & check-in API', () => {
       json: async () => ({ detail: 'Invalid QR signature.' }),
     });
 
-    await expect(verifyTicket('BAD-QR', 'staff-jwt-token')).rejects.toThrow(
+    await expect(verifyTicket('BAD-QR', 'staff-jwt-token', '10')).rejects.toThrow(
       'Invalid QR signature.'
     );
   });
 
-  it('calls ticket-specific check-in endpoint when ticketId is provided', async () => {
+  it('checks in the verified ticket for the selected event', async () => {
     const updatedTicket = { id: '42', identifier: 'QR-VALID-1', status: 'checked_in' };
 
     mockFetch.mockResolvedValueOnce({
@@ -53,7 +53,7 @@ describe('ticketService QR validation & check-in API', () => {
       json: async () => updatedTicket,
     });
 
-    const result = await checkInTicket('QR-VALID-1', 'staff-jwt-token', '42');
+    const result = await checkInTicket('QR-VALID-1', 'staff-jwt-token', '10', '42');
 
     expect(mockFetch).toHaveBeenCalledWith(`${API_BASE_URL}/tickets/42/check-in`, {
       method: 'POST',
@@ -61,7 +61,7 @@ describe('ticketService QR validation & check-in API', () => {
         'Content-Type': 'application/json',
         Authorization: 'Bearer staff-jwt-token',
       },
-      body: JSON.stringify({ qr_token: 'QR-VALID-1' }),
+      body: JSON.stringify({ qr_token: 'QR-VALID-1', event_id: '10' }),
     });
     expect(result.status).toBe('checked_in');
   });
@@ -72,7 +72,7 @@ describe('ticketService QR validation & check-in API', () => {
       json: async () => ({ detail: 'Ticket has already been checked in.' }),
     });
 
-    await expect(checkInTicket('QR-USED-1', 'staff-jwt-token', '42')).rejects.toThrow(
+    await expect(checkInTicket('QR-USED-1', 'staff-jwt-token', '10', '42')).rejects.toThrow(
       'Ticket has already been checked in.'
     );
   });
@@ -104,7 +104,7 @@ describe('ticketService QR validation & check-in API', () => {
       json: async () => ({ qr_token: ['Invalid admission token.'] }),
     });
 
-    await expect(verifyTicket('BAD-QR', 'staff-jwt-token')).rejects.toThrow(
+    await expect(verifyTicket('BAD-QR', 'staff-jwt-token', '10')).rejects.toThrow(
       'Invalid admission token.'
     );
   });

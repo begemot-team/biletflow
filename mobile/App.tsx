@@ -163,9 +163,10 @@ export default function App() {
     showAlert('QR Code Scanned', `Payload: ${code}\nEvent: ${selectedEvent?.title}`);
   };
 
-  if (currentScreen === 'SCAN') {
+  if (currentScreen === 'SCAN' && selectedEvent) {
     return (
       <ScanScreen
+        eventId={selectedEvent.id}
         authToken={authToken || DEV_BYPASS_TOKEN}
         onBack={() => setCurrentScreen('EVENTS')}
         onScanSuccess={handleScanSuccess}

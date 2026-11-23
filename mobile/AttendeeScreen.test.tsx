@@ -116,7 +116,7 @@ describe('AttendeeScreen Component', () => {
     });
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/tickets/1/check-in'),
-      expect.objectContaining({ body: JSON.stringify({ qr_token: 'TICK-1001:signature' }) })
+      expect.objectContaining({ body: JSON.stringify({ qr_token: 'TICK-1001:signature', event_id: '1' }) })
     );
   });
 
