@@ -59,10 +59,18 @@ class EventSerializer(StrictModelSerializer):
             "visibility",
             "refund_policy",
             "published",
+            "cancelled_at",
             "suspended_at",
             "suspension_reason",
         ]
-        read_only_fields = ["id", "organizer", "published", "suspended_at", "suspension_reason"]
+        read_only_fields = [
+            "id",
+            "organizer",
+            "published",
+            "cancelled_at",
+            "suspended_at",
+            "suspension_reason",
+        ]
 
     def validate(self, attrs):
         start = attrs.get("starts_at", getattr(self.instance, "starts_at", None))
@@ -119,6 +127,8 @@ class TicketTypeSerializer(StrictModelSerializer):
     def get_available(self, obj):
         from .services import reserved
 
+        if obj.event.cancelled_at:
+            return 0
         return max(
             0,
             min(
@@ -339,6 +349,17 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "description",
             "created_at",
         ]
+
+
+class AuditLogFilterSerializer(serializers.Serializer):
+    date_from = serializers.DateField(required=False)
+    date_to = serializers.DateField(required=False)
+    action = serializers.CharField(max_length=50, required=False)
+
+    def validate(self, attrs):
+        if "date_from" in attrs and "date_to" in attrs and attrs["date_from"] > attrs["date_to"]:
+            raise serializers.ValidationError({"date_to": "Must be on or after the start date."})
+        return attrs
 
 
 class PromoCodeSerializer(serializers.ModelSerializer):

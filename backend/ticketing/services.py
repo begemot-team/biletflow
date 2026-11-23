@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from django.conf import settings
 from django.core import signing
 from django.db import transaction
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, Exists, F, OuterRef, Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -55,6 +55,7 @@ def reserve(user, event_id, items):
         Event.objects.select_for_update(),
         pk=event_id,
         published=True,
+        cancelled_at__isnull=True,
         suspended_at__isnull=True,
         organizer__user__is_active=True,
     )
@@ -117,6 +118,7 @@ def ensure_checkout_available(user, event, order):
         raise Conflict("Order is cancelled or expired.")
     if (
         not event.published
+        or event.cancelled_at
         or event.suspended_at
         or not event.organizer.user.is_active
         or event.starts_at <= timezone.now()
@@ -280,6 +282,8 @@ def check_in(ticket, user, token):
         status="checked_in", checked_in_at=now, checked_in_by=user
     )
     if not admitted:
+        if ticket.status in ("cancelled", "refunded"):
+            raise Conflict("Ticket is no longer valid for entry.")
         raise Conflict("Ticket has already been checked in.")
     ticket.status = "checked_in"
     ticket.checked_in_at = now
@@ -346,6 +350,7 @@ def resolve_campaign_link(token):
     event = code.campaign.event
     if (
         not event.published
+        or event.cancelled_at
         or event.suspended_at
         or event.visibility == "private"
         or not event.organizer.user.is_active
@@ -459,6 +464,43 @@ def invalidate_tickets(order, status):
 
 
 @transaction.atomic
+def cancel_event(user, event_id):
+    # Serialize with checkout while allowing an in-flight scan to insert its audit entry.
+    event = get_object_or_404(managed_events(user).select_for_update(no_key=True), pk=event_id)
+    if event.cancelled_at:
+        return event
+    now = timezone.now()
+    if event.ends_at <= now:
+        raise Conflict("A completed event cannot be cancelled.")
+
+    event.cancelled_at = now
+    event.save(update_fields=["cancelled_at"])
+    confirmed = event.orders.filter(status="confirmed")
+    recipients = list(confirmed.order_by().values_list("purchaser__email", flat=True).distinct())
+    item_ids = OrderItem.objects.filter(order__event=event).values("pk")
+    # Keep the status predicate on the updated row so PostgreSQL rechecks it after a scan wins.
+    tickets = Ticket.objects.filter(order_item_id__in=item_ids, status="valid").update(
+        status="cancelled"
+    )
+    holds = event.orders.filter(status="pending", expires_at__gt=now).update(status="cancelled")
+    checked_in = Ticket.objects.filter(order_item__order=OuterRef("pk"), status="checked_in")
+    free_orders = confirmed.filter(~Exists(checked_in), total_minor=0).update(status="cancelled")
+    record_audit(
+        event,
+        user,
+        "event.cancelled",
+        event,
+        f"Unused tickets invalidated: {tickets}. Holds closed: {holds}. "
+        f"Free orders cancelled: {free_orders}.",
+    )
+    if recipients:
+        transaction.on_commit(
+            lambda: notifications.send_event_cancelled(event, recipients), robust=True
+        )
+    return event
+
+
+@transaction.atomic
 def cancel_order(user, order_id):
     initial = get_object_or_404(Order, pk=order_id)
     event = Event.objects.select_for_update().get(pk=initial.event_id)
@@ -557,9 +599,10 @@ def ticket_type_stats(kind):
     sold = tickets["valid"] + tickets["checked_in"]
     return {
         "quantity": kind.quantity,
-        "available": max(
-            0,
-            min(kind.quantity - held - sold, kind.event.capacity - reserved(kind.event_id)),
+        "available": 0
+        if kind.event.cancelled_at
+        else max(
+            0, min(kind.quantity - held - sold, kind.event.capacity - reserved(kind.event_id))
         ),
         "reserved": held,
         "sold": sold,
@@ -746,6 +789,8 @@ def notify_support(case, recipient, summary):
 
 
 def paid_sales_open(event):
+    if event.cancelled_at:
+        return False
     activation = PaidSalesActivation.objects.filter(event=event).first()
     return activation is not None and activation.sales_open
 
@@ -774,7 +819,7 @@ def activation_state(event, activation=None):
         "id": activation.pk if activation else None,
         "event": event.pk,
         "status": status,
-        "sales_open": status == "active",
+        "sales_open": status == "active" and event.cancelled_at is None,
         "simulated": True,
         "currency": "KZT",
         "fee_minor": (
@@ -799,6 +844,8 @@ def submit_activation(user, event_id, data):
     is only charged once every other step is complete. Paying again is a no-op.
     """
     event = get_object_or_404(managed_events(user).select_for_update(), pk=event_id)
+    if event.cancelled_at:
+        raise Conflict("Paid sales cannot be activated for a cancelled event.")
     activation, _ = PaidSalesActivation.objects.get_or_create(event=event)
     now = timezone.now()
     if data.get("identity_confirmed") and not activation.identity_verified_at:

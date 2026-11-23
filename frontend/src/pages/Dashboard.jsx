@@ -82,8 +82,8 @@ function Dashboard() {
                   <tr key={ev.id}>
                     <td className="p-3">
                       <strong>{ev.title}</strong>
-                      <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published ? 'bg-green-100' : 'bg-gray-200'}`}>
-                        {ev.published ? 'Published' : 'Draft'}
+                      <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published && !ev.cancelled_at ? 'bg-green-100' : 'bg-gray-200'}`}>
+                        {ev.cancelled_at ? 'Cancelled' : ev.published ? 'Published' : 'Draft'}
                       </span>
                     </td>
                     <td className="whitespace-nowrap p-3">{dateFmt.format(new Date(ev.starts_at))}</td>

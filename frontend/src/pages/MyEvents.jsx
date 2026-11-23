@@ -34,8 +34,8 @@ function MyEvents() {
             <li key={ev.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <span>
                 <strong>{ev.title}</strong>
-                <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published ? 'bg-green-100' : 'bg-gray-200'}`}>
-                  {ev.published ? 'Published' : 'Draft'}
+                <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published && !ev.cancelled_at ? 'bg-green-100' : 'bg-gray-200'}`}>
+                  {ev.cancelled_at ? 'Cancelled' : ev.published ? 'Published' : 'Draft'}
                 </span>
                 <span className="block text-sm text-gray-600">
                   {dateFmt.format(new Date(ev.starts_at))} · {ev.venue}
@@ -43,9 +43,9 @@ function MyEvents() {
               </span>
               <span className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 <Link to={`/organizer/events/${ev.id}`} className="text-indigo-600 underline">Sales</Link>
-                <Link to={`/organizer/events/${ev.id}/edit`} className="text-indigo-600 underline">
+                {!ev.cancelled_at && <Link to={`/organizer/events/${ev.id}/edit`} className="text-indigo-600 underline">
                   Edit &amp; tickets
-                </Link>
+                </Link>}
                 <Link to={`/organizer/events/${ev.id}/staff`} className="text-indigo-600 underline">Event Admins</Link>
                 <Link to={`/organizer/analytics?event=${ev.id}`} className="text-indigo-600 underline">Analytics</Link>
                 {ev.published && (

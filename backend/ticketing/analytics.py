@@ -175,7 +175,7 @@ def event_analytics(event, params):
         "capacity": event.capacity,
         "active_tickets": active,
         "reserved_tickets": held(event),
-        "remaining": max(0, event.capacity - reserved(event.pk)),
+        "remaining": 0 if event.cancelled_at else max(0, event.capacity - reserved(event.pk)),
         "checked_in": checked_in,
         "check_in_percent": percent(checked_in, active),
         "ticket_type": None,
@@ -191,7 +191,9 @@ def event_analytics(event, params):
             "quantity": kind.quantity,
             "active_tickets": type_active,
             "reserved_tickets": held(event, kind),
-            "type_remaining": max(0, kind.quantity - reserved(event.pk, kind.pk)),
+            "type_remaining": 0
+            if event.cancelled_at
+            else max(0, kind.quantity - reserved(event.pk, kind.pk)),
             "checked_in": type_checked_in,
             "check_in_percent": percent(type_checked_in, type_active),
         }

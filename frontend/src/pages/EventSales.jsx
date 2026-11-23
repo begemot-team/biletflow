@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import EventOrders from '../components/EventOrders'
+import { eventStatus, statusLabel } from '../utils/eventHistory.js'
 import { formatAmount, formatMoney } from '../utils/money'
 import { ticketsSold } from '../utils/sales'
 
@@ -23,6 +24,8 @@ function EventSales() {
   const [sales, setSales] = useState(null)
   const [activation, setActivation] = useState(null)
   const [error, setError] = useState(null)
+  const [cancelError, setCancelError] = useState('')
+  const [cancelling, setCancelling] = useState(false)
   const [version, setVersion] = useState(0) // bumped after a refund or cancellation
 
   useEffect(() => {
@@ -40,8 +43,24 @@ function EventSales() {
     return () => { active = false }
   }, [id, version])
 
+  async function cancelEvent() {
+    if (!window.confirm('Cancel this event? Sales will close and unused tickets will be invalidated. Eligible paid orders can be refunded from this page.')) return
+    setCancelling(true)
+    setCancelError('')
+    try {
+      setEvent(await api(`/events/${id}/cancel`, { method: 'POST' }))
+      setVersion((value) => value + 1)
+    } catch (failure) {
+      setCancelError(failure.message)
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   if (error) return <p role="alert" className="text-red-600">{error}</p>
   if (!sales) return <p>Loading…</p>
+
+  const cancelled = Boolean(event.cancelled_at)
 
   return (
     <main>
@@ -50,19 +69,27 @@ function EventSales() {
         <div>
           <h1 className="text-3xl font-bold">{event.title}</h1>
           <p className="text-gray-600">
-            {dateFmt.format(new Date(event.starts_at))} · {event.venue} · {event.published ? 'Published' : 'Draft'}
+            {dateFmt.format(new Date(event.starts_at))} · {event.venue} · {statusLabel(eventStatus(event))}
           </p>
         </div>
         <span className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link to={`/organizer/events/${id}/edit`} className="text-indigo-600 underline">Edit &amp; tickets</Link>
+          {!cancelled && <Link to={`/organizer/events/${id}/edit`} className="text-indigo-600 underline">Edit &amp; tickets</Link>}
           <Link to={`/organizer/events/${id}/staff`} className="text-indigo-600 underline">Event Admins</Link>
-          <Link to={`/organizer/events/${id}/activation`} className="text-indigo-600 underline">Paid sales</Link>
+          {!cancelled && <Link to={`/organizer/events/${id}/activation`} className="text-indigo-600 underline">Paid sales</Link>}
           <Link to={`/organizer/analytics?event=${id}`} className="text-indigo-600 underline">Analytics</Link>
           {event.published && <Link to={`/events/${id}`} className="text-indigo-600 underline">Public page</Link>}
+          {!cancelled && new Date(event.ends_at) > new Date() && (
+            <button type="button" disabled={cancelling} onClick={cancelEvent}
+              className="text-red-700 underline disabled:opacity-50">
+              {cancelling ? 'Cancelling…' : 'Cancel event'}
+            </button>
+          )}
         </span>
       </div>
 
-      {activation && activation.checklist.some((item) => item.step === 'paid_ticket_type' && item.done) && activation.status !== 'active' && (
+      {cancelError && <p className="mt-4 text-red-700" role="alert">{cancelError}</p>}
+      {cancelled && <p className="mt-4 rounded-xl border bg-amber-50 p-4" role="status">Event cancelled. Sales are closed. Eligible paid orders can be refunded below.</p>}
+      {!cancelled && activation && activation.checklist.some((item) => item.step === 'paid_ticket_type' && item.done) && activation.status !== 'active' && (
         <p role="status" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
           {activation.status === 'suspended'
             ? 'Paid sales for this event are suspended by a platform admin.'
@@ -89,7 +116,7 @@ function EventSales() {
       <h2 className="mt-8 text-xl font-semibold">By ticket type</h2>
       {sales.ticket_types.length === 0 ? (
         <p className="mt-2 text-gray-600">
-          No ticket types yet. <Link to={`/organizer/events/${id}/edit`} className="text-indigo-600 underline">Add one</Link>
+          No ticket types yet. {!cancelled && <Link to={`/organizer/events/${id}/edit`} className="text-indigo-600 underline">Add one</Link>}
         </p>
       ) : (
         <div className="relative mt-3 overflow-x-auto rounded-xl border bg-white">
@@ -124,7 +151,7 @@ function EventSales() {
         </div>
       )}
 
-      <EventOrders eventId={id} onChanged={() => setVersion((v) => v + 1)} />
+      <EventOrders key={`${id}:${cancelled}`} eventId={id} onChanged={() => setVersion((v) => v + 1)} />
     </main>
   )
 }
