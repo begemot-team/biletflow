@@ -22,13 +22,14 @@ import ResetPassword from "./pages/ResetPassword.jsx";
 import SupportCase from "./pages/SupportCase.jsx";
 import SupportCases from "./pages/SupportCases.jsx";
 import Ticket from "./pages/Ticket.jsx";
+import VerifyEmail from "./pages/VerifyEmail.jsx";
 import OrganizerLayout from "./components/OrganizerLayout.jsx";
 
 function App() {
   const { user, isOrganizer, logout } = useAuth();
   const location = useLocation();
   // Login/Register are modals: keep Home rendered underneath them
-  const isAuthModal = ["/login", "/register", "/forgot-password", "/reset-password"].includes(location.pathname);
+  const isAuthModal = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"].includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -82,6 +83,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail key={location.hash} />} />
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/checkout/:orderId" element={<RequireAuth><Checkout /></RequireAuth>} />
         <Route path="/tickets/:id" element={<RequireAuth><Ticket /></RequireAuth>} />
