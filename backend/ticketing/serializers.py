@@ -74,6 +74,12 @@ class EventSerializer(StrictModelSerializer):
         return attrs
 
 
+class CheckInEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = ["id", "title", "venue", "starts_at"]
+
+
 class TicketTypeSerializer(StrictModelSerializer):
     price_minor = serializers.IntegerField(min_value=0, max_value=1000000000, required=False)
     quantity = serializers.IntegerField(min_value=0, max_value=1000000)

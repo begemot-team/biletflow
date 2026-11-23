@@ -8,7 +8,6 @@ from io import BytesIO
 from pathlib import Path
 
 import qrcode
-import reportlab
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
@@ -16,11 +15,16 @@ from django.utils.html import escape
 from qrcode.image.svg import SvgPathImage
 from reportlab.lib.colors import HexColor
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.platypus import KeepInFrame, Paragraph
 
 from .models import Order, SupportCase, Ticket
+
+TICKET_FONT_NAME = "NotoSans"
+TICKET_FONT_PATH = Path(__file__).with_name("fonts") / "NotoSans-Regular.ttf"
 
 
 def ticket_qr_svg(token):
@@ -34,16 +38,17 @@ def ticket_pdf(ticket, token):
     event = ticket.order_item.order.event
     ticket_type = ticket.order_item.ticket_type
     output = BytesIO()
-    font_name = "Helvetica"
-    vera = Path(reportlab.__file__).with_name("fonts") / "Vera.ttf"
-    if vera.exists():
-        font_name = "BiletFlowVera"
-        if font_name not in pdfmetrics.getRegisteredFontNames():
-            pdfmetrics.registerFont(TTFont(font_name, vera))
+    font_name = TICKET_FONT_NAME
+    if font_name not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(font_name, TICKET_FONT_PATH))
 
     document = canvas.Canvas(output, pagesize=A4, pageCompression=0)
     width, height = A4
     green = HexColor("#183b30")
+    text_color = HexColor("#1f291f")
+    margin = 48
+    qr_size = 225
+    qr_left = width - margin - qr_size
     document.setTitle(f"BiletFlow ticket {ticket.identifier}")
     document.setAuthor("BiletFlow")
     document.setFillColor(green)
@@ -54,9 +59,15 @@ def ticket_pdf(ticket, token):
     document.setFont(font_name, 10)
     document.drawString(49, height - 89, "ADMISSION TICKET • NOT A CAMPAIGN QR")
 
-    document.setFillColorRGB(0.12, 0.16, 0.12)
-    document.setFont(font_name, 22)
-    document.drawString(48, height - 155, event.title[:65])
+    title_style = ParagraphStyle(
+        "Ticket title", fontName=font_name, fontSize=22, leading=27, textColor=text_color
+    )
+    title_width = width - 2 * margin
+    title = KeepInFrame(title_width, 144, [Paragraph(escape(event.title), title_style)])
+    _, title_height = title.wrapOn(document, title_width, 144)
+    title_top = height - 136
+    title.drawOn(document, margin, title_top - title_height)
+
     starts = timezone.localtime(event.starts_at).strftime("%d.%m.%Y %H:%M")
     details = [
         ("Date and time", starts),
@@ -66,31 +77,47 @@ def ticket_pdf(ticket, token):
         ("Ticket ID", str(ticket.identifier)),
         ("Status", ticket.status.replace("_", " ").title()),
     ]
-    y = height - 198
+    label_style = ParagraphStyle(
+        "Ticket label",
+        fontName=font_name,
+        fontSize=9,
+        leading=12,
+        textColor=HexColor("#596659"),
+        spaceAfter=3,
+    )
+    value_style = ParagraphStyle(
+        "Ticket value",
+        fontName=font_name,
+        fontSize=12,
+        leading=16,
+        textColor=text_color,
+        spaceAfter=18,
+    )
+    paragraphs = []
     for label, value in details:
-        document.setFont(font_name, 9)
-        document.setFillColorRGB(0.35, 0.40, 0.35)
-        document.drawString(48, y, label.upper())
-        document.setFont(font_name, 12)
-        document.setFillColorRGB(0.12, 0.16, 0.12)
-        document.drawString(48, y - 18, str(value)[:82])
-        y -= 54
+        paragraphs.append(Paragraph(label.upper(), label_style))
+        paragraphs.append(Paragraph(escape(value), value_style))
+
+    details_top = title_top - title_height - 24
+    # Reserve a separate text column and keep even long values inside the printable area.
+    details_width = qr_left - margin - 24
+    max_details_height = details_top - 116
+    detail_column = KeepInFrame(details_width, max_details_height, paragraphs)
+    _, details_height = detail_column.wrapOn(document, details_width, max_details_height)
+    detail_column.drawOn(document, margin, details_top - details_height)
 
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=4)
     qr.add_data(token)
     qr.make(fit=True)
     matrix = qr.get_matrix()
-    qr_size = 225
     cell = qr_size / len(matrix)
-    left, bottom = width - qr_size - 48, height - 440
-    document.setFillColorRGB(1, 1, 1)
-    document.rect(left - 12, bottom - 12, qr_size + 24, qr_size + 24, fill=1, stroke=0)
+    bottom = details_top - qr_size
     document.setFillColor(green)
     for row, values in enumerate(matrix):
         for column, enabled in enumerate(values):
             if enabled:
                 document.rect(
-                    left + column * cell,
+                    qr_left + column * cell,
                     bottom + (len(matrix) - row - 1) * cell,
                     cell + 0.2,
                     cell + 0.2,
