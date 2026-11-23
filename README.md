@@ -146,8 +146,8 @@ heroku run -a biletflow-demo -- python manage.py seed_demo --password "$(heroku 
 Пароль демо-аккаунтов хранится только в config var `DEMO_PASSWORD`, не в Git.
 Остановить расходы: `heroku ps:scale web=0`; база (Essential-0) продолжает
 списывать до $5/мес, пока не удалена (`heroku pg:backups:capture` перед удалением).
-Письма — симуляция, видны в `heroku logs --tail`. Мобильному приложению нужно
-указать адрес Heroku вместо `localhost:8000`.
+Письма — симуляция, видны в `heroku logs --tail`. Мобильный сканер по умолчанию
+подключается к Heroku. [Настройка локального API](docs/DEPLOYMENT.md#мобильный-сканер).
 
 ## Документация
 
