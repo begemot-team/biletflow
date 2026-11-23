@@ -31,11 +31,14 @@ class TicketingAPITests(TestCase):
         created = self.client.post(f"/api/events/{event}/staff", {"email": staff.email})
         self.assertEqual(created.status_code, 201, created.content)
         self.assertEqual(self.client.get(f"/api/events/{event}/staff").json()["count"], 1)
-        from ticketing.permissions import scan_events
-
-        self.assertIn(event, list(scan_events(staff).values_list("pk", flat=True)), created.json())
+        owner_events = self.client.get("/api/me/check-in-events").json()["results"]
+        self.assertEqual({item["id"] for item in owner_events}, {event, other_event})
         self.client.force_authenticate(staff)
         self.assertIn("event_admin", self.client.get("/api/auth/me").json()["roles"])
+        assigned = self.client.get("/api/me/check-in-events")
+        self.assertEqual(assigned.status_code, 200, assigned.content)
+        self.assertEqual([item["id"] for item in assigned.json()["results"]], [event])
+        self.assertEqual(self.client.get("/api/me/events").json()["results"], [])
         verified = self.client.post("/api/tickets/verify", {"qr_token": ticket["qr_token"]})
         self.assertEqual(verified.status_code, 200, verified.content)
         self.assertEqual(
@@ -59,6 +62,11 @@ class TicketingAPITests(TestCase):
         )
         self.client.force_authenticate(staff)
         self.assertNotIn("event_admin", self.client.get("/api/auth/me").json()["roles"])
+        self.assertEqual(self.client.get("/api/me/check-in-events").json()["results"], [])
+        StaffAssignment.objects.create(
+            event_id=other_event, user=staff, can_check_in=False, can_manage_support=True
+        )
+        self.assertEqual(self.client.get("/api/me/check-in-events").json()["results"], [])
         self.assertEqual(self.client.get(f"/api/events/{event}/attendees").status_code, 404)
 
     def test_scanner_rejects_tickets_outside_the_selected_event(self):

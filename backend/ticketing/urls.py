@@ -38,6 +38,7 @@ urlpatterns = [
     path("support-cases/<int:pk>", views.SupportCaseDetail.as_view()),
     path("support-cases/<int:pk>/messages", views.SupportCaseMessages.as_view()),
     path("me/events", views.MyEvents.as_view()),
+    path("me/check-in-events", views.MyCheckInEvents.as_view()),
     path("me/orders", views.MyOrders.as_view()),
     path("me/tickets", views.MyTickets.as_view()),
 ]

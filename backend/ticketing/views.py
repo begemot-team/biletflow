@@ -47,6 +47,7 @@ from .serializers import (
     AttendeeSerializer,
     AuditLogSerializer,
     CampaignSerializer,
+    CheckInEventSerializer,
     CheckoutSerializer,
     EventOrderSerializer,
     EventSerializer,
@@ -93,6 +94,13 @@ class MyEvents(generics.ListAPIView):
 
     def get_queryset(self):
         return managed_events(self.request.user)
+
+
+class MyCheckInEvents(generics.ListAPIView):
+    serializer_class = CheckInEventSerializer
+
+    def get_queryset(self):
+        return scan_events(self.request.user)
 
 
 class EventDetail(generics.RetrieveUpdateDestroyAPIView):

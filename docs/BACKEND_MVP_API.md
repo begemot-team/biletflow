@@ -412,6 +412,7 @@ the demo. A real provider requires server-verified payment confirmation.
 
 | Method and path | Behavior |
 | --- | --- |
+| GET `/me/check-in-events` | Paginated events available to the scanner: owned events, assignments with `can_check_in`, or all events for a platform admin. Each result includes `id`, `title`, `venue` and `starts_at`. |
 | GET `/tickets/{id}` | Purchaser, event owner or platform admin only |
 | GET `/tickets/{id}/qr` | Same authorization; SVG QR image, private/no-store |
 | POST `/tickets/verify` | Event owner, assigned Event Admin with `can_check_in`, or platform admin sends `{qr_token: "scanned text"}`; returns `{valid, ticket}` |
