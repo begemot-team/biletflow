@@ -201,7 +201,7 @@ def checkout(user, order_id, outcome, promo_code=None, attendees=None):
     order.confirmed_at = timezone.now()
     # Email only after the transaction commits, so a rolled-back checkout never
     # tells the attendee they have a ticket (SRS 4.6: failed checkouts issue nothing).
-    transaction.on_commit(lambda: notifications.send_order_confirmation(order.pk))
+    transaction.on_commit(lambda: notifications.send_order_confirmation(order.pk), robust=True)
     order.save(
         update_fields=[
             "status",
@@ -522,7 +522,7 @@ def cancel_order(user, order_id):
         order.status = "cancelled"
         order.save(update_fields=["status"])
         record_audit(event, user, "order.cancelled", order, "Free registration cancelled.")
-        transaction.on_commit(lambda: notifications.send_order_closed(order.pk))
+        transaction.on_commit(lambda: notifications.send_order_closed(order.pk), robust=True)
         return order
     if order.status != "pending":
         raise Conflict("Order is already cancelled or refunded.")
@@ -565,7 +565,7 @@ def refund_order(user, order_id):
     record_audit(
         event, user, "order.refunded", order, f"Full refund of {payment.amount_minor} tiyn."
     )
-    transaction.on_commit(lambda: notifications.send_order_closed(order.pk))
+    transaction.on_commit(lambda: notifications.send_order_closed(order.pk), robust=True)
     return order, refund
 
 
@@ -784,7 +784,7 @@ def update_support_case(user, case_id, data):
 
 def notify_support(case, recipient, summary):
     transaction.on_commit(
-        lambda: notifications.send_support_notification(case.pk, recipient, summary)
+        lambda: notifications.send_support_notification(case.pk, recipient, summary), robust=True
     )
 
 

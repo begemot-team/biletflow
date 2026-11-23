@@ -1,6 +1,9 @@
 from datetime import timedelta
 from io import StringIO
+from smtplib import SMTPException
+from unittest.mock import patch
 
+from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.test import TestCase, override_settings
@@ -70,12 +73,14 @@ class OrderConfirmationEmailTests(Phase3Helpers, TestCase):
         for ticket in order["tickets"]:
             self.assertIn(ticket["identifier"], message.body)
         self.assertIn("no real money", message.body)
+        self.assertIn(f"{settings.FRONTEND_BASE_URL}/account", message.body)
         self.assertEqual(len(message.attachments), 2)
         name, content, mimetype = message.attachments[0]
         self.assertTrue(name.endswith(".svg"))
         self.assertEqual(mimetype, "image/svg+xml")
         self.assertIn(b"<svg", content)
         self.assertEqual(message.alternatives[0][1], "text/html")
+        self.assertIn(f'href="{settings.FRONTEND_BASE_URL}/account"', message.alternatives[0][0])
 
     def test_free_registration_is_emailed(self):
         event, kind = self.inventory(price=0)
@@ -94,6 +99,16 @@ class OrderConfirmationEmailTests(Phase3Helpers, TestCase):
             again = self.client.post(f"/api/orders/{order.pk}/checkout", {"outcome": "success"})
         self.assertEqual(again.status_code, 200)
         self.assertEqual(len(mail.outbox), 1)
+
+    def test_mail_failure_does_not_fail_a_confirmed_order(self):
+        event, kind = self.inventory()
+        with (
+            patch("ticketing.notifications.send_order_confirmation", side_effect=SMTPException),
+            self.assertLogs("django.test", level="ERROR"),
+        ):
+            order = self.buy(event, kind)
+        self.assertEqual(order["status"], "confirmed")
+        self.assertEqual(len(order["tickets"]), 1)
 
 
 class TicketTypeStatsTests(Phase3Helpers, TestCase):

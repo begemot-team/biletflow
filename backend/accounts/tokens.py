@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.core import signing
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework.exceptions import ValidationError
@@ -51,14 +52,23 @@ def send_token_email(user, purpose):
     uid, token = encoded_uid(user), token_for(user, purpose)
     codes = f"uid={uid}\ntoken={token}\n"
     if purpose == "email_verification":
-        send_mail("BiletFlow email verification", codes, None, [user.email])
-        return
-    body = (
-        "To choose a new BiletFlow password, open this link:\n"
-        f"{password_reset_link(uid, token)}\n\n"
-        "It works once and expires in 1 hour. If you did not ask for this, "
-        "ignore this email; your password stays the same.\n\n"
-        "If the link does not open, paste these lines on the reset page:\n"
-        f"{codes}"
-    )
-    send_mail("BiletFlow password reset", body, None, [user.email])
+        # A fragment keeps the code out of HTTP requests for the web page.
+        fragment = urlencode({"uid": uid, "token": token})
+        subject = "BiletFlow email verification"
+        body = (
+            "To verify your BiletFlow email address, open this link:\n"
+            f"{settings.FRONTEND_BASE_URL}/verify-email#{fragment}\n\n"
+            "This link works once and expires in 24 hours.\n\n"
+            f"{codes}"
+        )
+    else:
+        subject = "BiletFlow password reset"
+        body = (
+            "To choose a new BiletFlow password, open this link:\n"
+            f"{password_reset_link(uid, token)}\n\n"
+            "It works once and expires in 1 hour. If you did not ask for this, "
+            "ignore this email; your password stays the same.\n\n"
+            "If the link does not open, paste these lines on the reset page:\n"
+            f"{codes}"
+        )
+    transaction.on_commit(lambda: send_mail(subject, body, None, [user.email]), robust=True)
