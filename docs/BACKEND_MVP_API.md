@@ -419,6 +419,10 @@ the demo. A real provider requires server-verified payment confirmation.
 | POST `/tickets/{id}/verify` | Same verification, additionally binds token to numeric ID |
 | POST `/tickets/{id}/check-in` | Same check-in, additionally binds token to numeric ID |
 
+The mobile scanner includes `event_id` for both verification and check-in.
+With `event_id`, a ticket outside the selected event returns 404 even if the
+operator can scan at both events. The field is optional for existing API clients.
+
 Ticket response contains id, identifier (UUID), event, ticket_type,
 attendee_name, attendee_email, status,
 issued_at, checked_in_at, qr_token. The QR encodes a UUID signed with a dedicated

@@ -67,7 +67,7 @@ export default function AttendeeScreen({
     }
     setActionLoading(key);
     try {
-      const updated = await checkInTicket(ticket.qr_token, authToken, ticket.id);
+      const updated = await checkInTicket(ticket.qr_token, authToken, eventId, ticket.id);
       setAttendees((prev) =>
         prev.map((t) => (t.id === ticket.id ? { ...t, ...updated } : t))
       );

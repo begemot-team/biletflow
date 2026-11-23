@@ -309,6 +309,7 @@ class PublishSerializer(StrictSerializer):
 
 class QRSerializer(StrictSerializer):
     qr_token = serializers.CharField(max_length=256)
+    event_id = serializers.IntegerField(min_value=1, required=False)
 
 
 class RefundSerializer(serializers.ModelSerializer):

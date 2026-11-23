@@ -12,12 +12,13 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { verifyTicket, checkInTicket, Ticket } from './services/ticketService';
 
 interface ScanScreenProps {
+  eventId: string;
   authToken?: string;
   onBack: () => void;
   onScanSuccess?: (code: string) => void;
 }
 
-export default function ScanScreen({ authToken, onBack, onScanSuccess }: ScanScreenProps) {
+export default function ScanScreen({ eventId, authToken, onBack, onScanSuccess }: ScanScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,18 +32,15 @@ export default function ScanScreen({ authToken, onBack, onScanSuccess }: ScanScr
     setStatusMessage(null);
     setScannedTicket(null);
 
-    if (onScanSuccess) {
-      onScanSuccess(tokenToVerify);
-    }
-
     try {
       // Direct API verification against backend
-      const result = await verifyTicket(tokenToVerify, authToken || 'dev-token');
+      const result = await verifyTicket(tokenToVerify, authToken || 'dev-token', eventId);
       setScannedTicket(result.ticket);
 
       if (result.valid && result.ticket.status === 'valid') {
         setStatusMessage('Ticket Verified! Ready for Check-In.');
         setStatusType('success');
+        onScanSuccess?.(tokenToVerify);
       } else {
         setStatusMessage(`Ticket Status: ${result.ticket.status.replace('_', ' ').toUpperCase()}`);
         setStatusType('warning');
@@ -57,14 +55,15 @@ export default function ScanScreen({ authToken, onBack, onScanSuccess }: ScanScr
   };
 
   const handleConfirmCheckIn = async () => {
-    if (!qrInput) return;
+    if (!qrInput || !scannedTicket) return;
     setLoading(true);
 
     try {
       const updatedTicket = await checkInTicket(
         qrInput,
         authToken || 'dev-token',
-        scannedTicket?.id
+        eventId,
+        scannedTicket.id
       );
       setScannedTicket(updatedTicket);
       setStatusMessage('Check-In Confirmed Successfully!');

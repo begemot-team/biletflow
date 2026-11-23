@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import OrganizerProfile, User
+from ticketing.models import StaffAssignment
 from ticketing.testing import activate_paid_sales
 
 
@@ -59,6 +60,37 @@ class TicketingAPITests(TestCase):
         self.client.force_authenticate(staff)
         self.assertNotIn("event_admin", self.client.get("/api/auth/me").json()["roles"])
         self.assertEqual(self.client.get(f"/api/events/{event}/attendees").status_code, 404)
+
+    def test_scanner_rejects_tickets_outside_the_selected_event(self):
+        selected_event, _ = self.inventory()
+        ticket_event, kind = self.inventory()
+        staff = User.objects.create_user("scanner@example.com", "secret")
+        StaffAssignment.objects.create(event_id=selected_event, user=staff)
+        StaffAssignment.objects.create(event_id=ticket_event, user=staff)
+        self.client.force_authenticate(self.buyer)
+        order = self.reserve(ticket_event, kind).json()
+        ticket = self.client.post(
+            f"/api/orders/{order['id']}/checkout", {"outcome": "success"}
+        ).json()["tickets"][0]
+
+        self.client.force_authenticate(staff)
+        verify_url = "/api/tickets/verify"
+        check_in_url = f"/api/tickets/{ticket['id']}/check-in"
+        payload = {"qr_token": ticket["qr_token"], "event_id": str(selected_event)}
+        for url in (verify_url, check_in_url):
+            with self.subTest(url=url):
+                rejected = self.client.post(url, payload)
+                self.assertEqual(rejected.status_code, 404)
+                self.assertEqual(rejected.json()["detail"], "Ticket not found for this event.")
+
+        payload["event_id"] = str(ticket_event)
+        verified = self.client.post(verify_url, payload)
+        self.assertEqual(verified.status_code, 200)
+        self.assertTrue(verified.json()["valid"])
+        admitted = self.client.post(check_in_url, payload)
+        self.assertEqual(admitted.status_code, 200)
+        self.assertEqual(admitted.json()["status"], "checked_in")
+        self.assertEqual(self.client.post(check_in_url, payload).status_code, 409)
 
     def test_malformed_event_payload_and_attendee_cannot_create_event(self):
         self.assertEqual(self.client.post("/api/events", [{}], format="json").status_code, 400)
