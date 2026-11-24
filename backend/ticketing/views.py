@@ -6,12 +6,12 @@ import qrcode
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Exists, OuterRef, Q
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from qrcode.image.svg import SvgPathImage
 from rest_framework import generics, permissions
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -48,6 +48,7 @@ from .serializers import (
     AuditLogFilterSerializer,
     AuditLogSerializer,
     CampaignSerializer,
+    CheckInEventSerializer,
     CheckoutSerializer,
     EventOrderSerializer,
     EventSerializer,
@@ -66,6 +67,7 @@ from .serializers import (
     SupportReplySerializer,
     TicketSerializer,
     TicketTypeSerializer,
+    UndoCheckInSerializer,
     qr_token,
 )
 
@@ -95,6 +97,13 @@ class MyEvents(generics.ListAPIView):
 
     def get_queryset(self):
         return managed_events(self.request.user)
+
+
+class MyCheckInEvents(generics.ListAPIView):
+    serializer_class = CheckInEventSerializer
+
+    def get_queryset(self):
+        return scan_events(self.request.user)
 
 
 class EventDetail(generics.RetrieveUpdateDestroyAPIView):
@@ -441,15 +450,23 @@ class TicketPDF(APIView):
         return response
 
 
-def scanned_ticket(request, pk, token):
+def scanned_ticket(request, pk, token, event_id):
     # One query resolves the ticket, its event and organizer for the scanner apps:
     # by id from the URL, or straight from the signed QR token when none is given.
     lookup = {"pk": pk} if pk is not None else {"identifier": services.qr_identifier(token)}
-    return get_object_or_404(
-        Ticket.objects.select_related("order_item__order__event__organizer"),
-        order_item__order__event__in=scan_events(request.user),
-        **lookup,
-    )
+    events = scan_events(request.user)
+    if event_id is not None:
+        events = events.filter(pk=event_id)
+    try:
+        return get_object_or_404(
+            Ticket.objects.select_related("order_item__order__event__organizer"),
+            order_item__order__event__in=events,
+            **lookup,
+        )
+    except Http404 as exc:
+        if event_id is None:
+            raise
+        raise NotFound("Ticket not found for this event.") from exc
 
 
 class VerifyTicket(APIView):
@@ -458,9 +475,10 @@ class VerifyTicket(APIView):
     def post(self, request, pk=None):
         serializer = QRSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ticket = scanned_ticket(request, pk, serializer.validated_data["qr_token"])
+        token = serializer.validated_data["qr_token"]
+        ticket = scanned_ticket(request, pk, token, serializer.validated_data.get("event_id"))
         self.check_object_permissions(request, ticket.order_item.order.event)
-        services.check_qr(ticket, serializer.validated_data["qr_token"])
+        services.check_qr(ticket, token)
         return Response(
             {"valid": ticket.status == "valid", "ticket": TicketSerializer(ticket).data}
         )
@@ -472,9 +490,27 @@ class CheckIn(APIView):
     def post(self, request, pk=None):
         serializer = QRSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        ticket = scanned_ticket(request, pk, serializer.validated_data["qr_token"])
+        token = serializer.validated_data["qr_token"]
+        ticket = scanned_ticket(request, pk, token, serializer.validated_data.get("event_id"))
         self.check_object_permissions(request, ticket.order_item.order.event)
-        ticket = services.check_in(ticket, request.user, serializer.validated_data["qr_token"])
+        ticket = services.check_in(ticket, request.user, token)
+        return Response(TicketSerializer(ticket).data)
+
+
+class UndoCheckIn(APIView):
+    # Anyone allowed to admit at this event may reverse their door's mistake; the
+    # audit log keeps who did it and why, so the reversal is never silent.
+    permission_classes = [permissions.IsAuthenticated, CanCheckInEvent]
+
+    def post(self, request, pk=None):
+        serializer = UndoCheckInSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        ticket = scanned_ticket(request, pk, data["qr_token"], data.get("event_id"))
+        self.check_object_permissions(request, ticket.order_item.order.event)
+        ticket = services.undo_check_in(
+            ticket, request.user, data["qr_token"], data.get("reason", "").strip()
+        )
         return Response(TicketSerializer(ticket).data)
 
 

@@ -82,6 +82,12 @@ class EventSerializer(StrictModelSerializer):
         return attrs
 
 
+class CheckInEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = ["id", "title", "venue", "starts_at"]
+
+
 class TicketTypeSerializer(StrictModelSerializer):
     price_minor = serializers.IntegerField(min_value=0, max_value=1000000000, required=False)
     quantity = serializers.IntegerField(min_value=0, max_value=1000000)
@@ -319,6 +325,11 @@ class PublishSerializer(StrictSerializer):
 
 class QRSerializer(StrictSerializer):
     qr_token = serializers.CharField(max_length=256)
+    event_id = serializers.IntegerField(min_value=1, required=False)
+
+
+class UndoCheckInSerializer(QRSerializer):
+    reason = serializers.CharField(max_length=200, required=False, allow_blank=True)
 
 
 class RefundSerializer(serializers.ModelSerializer):

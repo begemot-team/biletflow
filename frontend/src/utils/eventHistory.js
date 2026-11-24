@@ -31,6 +31,7 @@ export const ACTIVITY_LABELS = {
   'campaign.created': 'Campaign created',
   'campaign.updated': 'Campaign updated',
   'ticket.checked_in': 'Ticket checked in',
+  'ticket.check_in_reversed': 'Check-in reversed',
   'ticket.attendee_updated': 'Ticket holder updated',
   'staff.assigned': 'Event Admin assigned',
   'staff.removed': 'Event Admin removed',

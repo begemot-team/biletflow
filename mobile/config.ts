@@ -1,6 +1,2 @@
-import { Platform } from 'react-native';
-
-// Android emulator uses 10.0.2.2 to access host machine; web uses localhost
-const HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-
-export const API_BASE_URL = `http://${HOST}:8000/api`;
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'https://begemot-b8b43e7ea8ea.herokuapp.com/api';

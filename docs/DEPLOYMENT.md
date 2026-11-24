@@ -133,10 +133,12 @@ git push https://git.heroku.com/<имя>.git HEAD:main
 
 ## Мобильный сканер
 
-`mobile/config.ts` указывает на `localhost:8000` (`10.0.2.2:8000` в Android-эмуляторе).
-Для телефона в одной сети с компьютером замените хост на IP компьютера, а для
-работы с Heroku — на `https://begemot-b8b43e7ea8ea.herokuapp.com/api`. Вход —
-аккаунт организатора или сотрудника события (`/events/{id}/staff`).
+Сканер по умолчанию использует `https://begemot-b8b43e7ea8ea.herokuapp.com/api`.
+Войти можно под аккаунтом организатора или сотрудника события (`/events/{id}/staff`).
+
+Для локальной разработки задайте `EXPO_PUBLIC_API_URL` в `mobile/.env.local`
+и перезагрузите приложение. Для iOS-симулятора или браузера укажите
+`http://localhost:8000/api`, для Android-эмулятора — `http://10.0.2.2:8000/api`.
 
 ## Проверка после деплоя
 

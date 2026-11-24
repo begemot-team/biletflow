@@ -424,12 +424,18 @@ the demo. A real provider requires server-verified payment confirmation.
 
 | Method and path | Behavior |
 | --- | --- |
+| GET `/me/check-in-events` | Paginated events available to the scanner: owned events, assignments with `can_check_in`, or all events for a platform admin. Each result includes `id`, `title`, `venue` and `starts_at`. |
 | GET `/tickets/{id}` | Purchaser, event owner or platform admin only |
 | GET `/tickets/{id}/qr` | Same authorization; SVG QR image, private/no-store |
 | POST `/tickets/verify` | Event owner, assigned Event Admin with `can_check_in`, or platform admin sends `{qr_token: "scanned text"}`; returns `{valid, ticket}` |
 | POST `/tickets/check-in` | Same event-scoped permission; atomically marks checked_in |
 | POST `/tickets/{id}/verify` | Same verification, additionally binds token to numeric ID |
 | POST `/tickets/{id}/check-in` | Same check-in, additionally binds token to numeric ID |
+| POST `/tickets/check-in/undo`, `/tickets/{id}/check-in/undo` | Same permission and payload plus optional `reason` (≤200 chars); reverses an accidental check-in so the ticket admits again |
+
+The mobile scanner includes `event_id` for both verification and check-in.
+With `event_id`, a ticket outside the selected event returns 404 even if the
+operator can scan at both events. The field is optional for existing API clients.
 
 Ticket response contains id, identifier (UUID), event, ticket_type,
 attendee_name, attendee_email, status,
@@ -438,7 +444,14 @@ admission salt. It is an admission credential: keep it private. Unpublishing an
 event stops sales but does not cancel already-issued tickets. Verification is
 read-only; check-in rejects a repeated scan with 409 and records operator/time.
 There is no check-in time window in the MVP; authorized staff may test
-admission before the event. Undoing a check-in is deferred.
+admission before the event.
+
+Undoing a check-in (SRS 4.8, UC4) is a conditional `UPDATE ... WHERE status =
+'checked_in'` back to `valid`, clearing operator and time. A ticket that is not
+checked in returns 409, and a refunded or cancelled ticket is never revived. Each
+reversal is written to the audit log as `ticket.check_in_reversed` with the actor
+and reason, so it appears in the organizer history. The mobile attendee list
+offers Undo, with confirmation, for checked-in tickets.
 
 Scanner performance (SRS: check-in in about 2 s). The ticket, its event and
 organizer are resolved in one query; check-in is a single conditional
