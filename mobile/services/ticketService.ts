@@ -75,6 +75,31 @@ export const checkInTicket = async (
   return response.json();
 };
 
+// Reverses an accidental check-in (SRS 4.8); the backend records it in the audit log.
+export const undoCheckIn = async (
+  qrToken: string,
+  authToken: string,
+  eventId: string,
+  ticketId: number | string,
+  reason = ''
+): Promise<Ticket> => {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/check-in/undo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({ qr_token: qrToken, event_id: eventId, reason }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(apiErrorMessage(errorData, 'Undo check-in failed'));
+  }
+
+  return response.json();
+};
+
 export const fetchEventAttendees = async (
   eventId: string,
   authToken: string

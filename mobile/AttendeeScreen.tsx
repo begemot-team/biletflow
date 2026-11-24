@@ -10,7 +10,12 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { fetchEventAttendees, checkInTicket, Ticket } from './services/ticketService';
+import {
+  fetchEventAttendees,
+  checkInTicket,
+  undoCheckIn,
+  Ticket,
+} from './services/ticketService';
 
 interface AttendeeScreenProps {
   eventId: string;
@@ -79,6 +84,45 @@ export default function AttendeeScreen({
       setActionLoading(null);
     }
   };
+
+  const confirmUndo = (ticket: Ticket, onConfirm: () => void) => {
+    const message = `Mark ${ticket.attendee_name || ticket.identifier} as not checked in?`;
+    if (Platform.OS === 'web') {
+      if (confirm(message)) onConfirm();
+      return;
+    }
+    Alert.alert('Undo Check-In', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Undo', style: 'destructive', onPress: onConfirm },
+    ]);
+  };
+
+  const runUndoCheckIn = async (ticket: Ticket) => {
+    if (!ticket.qr_token) {
+      notify('Undo Failed', 'This ticket has no admission token.');
+      return;
+    }
+    setActionLoading(String(ticket.id));
+    try {
+      const updated = await undoCheckIn(
+        ticket.qr_token,
+        authToken,
+        eventId,
+        ticket.id,
+        'Reversed from the mobile attendee list'
+      );
+      setAttendees((prev) =>
+        prev.map((t) => (t.id === ticket.id ? { ...t, ...updated } : t))
+      );
+      notify('Check-In Undone', `${ticket.attendee_name || ticket.identifier} can be admitted again`);
+    } catch (err: any) {
+      notify('Undo Failed', err.message || 'Undo check-in failed');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUndoCheckIn = (ticket: Ticket) => confirmUndo(ticket, () => runUndoCheckIn(ticket));
 
   const filteredAttendees = attendees.filter((t) => {
     const query = searchQuery.toLowerCase();
@@ -159,6 +203,19 @@ export default function AttendeeScreen({
                     )}
                   </TouchableOpacity>
                 )}
+                {item.status === 'checked_in' && (
+                  <TouchableOpacity
+                    style={styles.undoBtn}
+                    onPress={() => handleUndoCheckIn(item)}
+                    disabled={actionLoading === String(item.id)}
+                  >
+                    {actionLoading === String(item.id) ? (
+                      <ActivityIndicator color="#c0392b" size="small" />
+                    ) : (
+                      <Text style={styles.undoBtnText}>Undo</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -205,5 +262,13 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: 'bold' },
   checkInBtn: { backgroundColor: '#28a745', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   checkInBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  undoBtn: {
+    borderColor: '#c0392b',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  undoBtnText: { color: '#c0392b', fontWeight: 'bold', fontSize: 12 },
   emptyText: { textAlign: 'center', color: '#888', marginTop: 30 },
 });

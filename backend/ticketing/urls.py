@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path("tickets/verify", views.VerifyTicket.as_view()),
     path("tickets/check-in", views.CheckIn.as_view()),
+    path("tickets/check-in/undo", views.UndoCheckIn.as_view()),
     path("events", views.EventList.as_view()),
     path("events/<int:pk>", views.EventDetail.as_view()),
     path("events/<int:pk>/publish", views.Publish.as_view()),
@@ -35,6 +36,7 @@ urlpatterns = [
     path("tickets/<int:pk>/pdf", views.TicketPDF.as_view()),
     path("tickets/<int:pk>/verify", views.VerifyTicket.as_view()),
     path("tickets/<int:pk>/check-in", views.CheckIn.as_view()),
+    path("tickets/<int:pk>/check-in/undo", views.UndoCheckIn.as_view()),
     path("support-cases", views.SupportCaseList.as_view()),
     path("support-cases/<int:pk>", views.SupportCaseDetail.as_view()),
     path("support-cases/<int:pk>/messages", views.SupportCaseMessages.as_view()),
