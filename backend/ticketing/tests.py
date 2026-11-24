@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import OrganizerProfile, User
+from ticketing.models import StaffAssignment
 from ticketing.testing import activate_paid_sales
 
 
@@ -30,11 +31,14 @@ class TicketingAPITests(TestCase):
         created = self.client.post(f"/api/events/{event}/staff", {"email": staff.email})
         self.assertEqual(created.status_code, 201, created.content)
         self.assertEqual(self.client.get(f"/api/events/{event}/staff").json()["count"], 1)
-        from ticketing.permissions import scan_events
-
-        self.assertIn(event, list(scan_events(staff).values_list("pk", flat=True)), created.json())
+        owner_events = self.client.get("/api/me/check-in-events").json()["results"]
+        self.assertEqual({item["id"] for item in owner_events}, {event, other_event})
         self.client.force_authenticate(staff)
         self.assertIn("event_admin", self.client.get("/api/auth/me").json()["roles"])
+        assigned = self.client.get("/api/me/check-in-events")
+        self.assertEqual(assigned.status_code, 200, assigned.content)
+        self.assertEqual([item["id"] for item in assigned.json()["results"]], [event])
+        self.assertEqual(self.client.get("/api/me/events").json()["results"], [])
         verified = self.client.post("/api/tickets/verify", {"qr_token": ticket["qr_token"]})
         self.assertEqual(verified.status_code, 200, verified.content)
         self.assertEqual(
@@ -58,7 +62,43 @@ class TicketingAPITests(TestCase):
         )
         self.client.force_authenticate(staff)
         self.assertNotIn("event_admin", self.client.get("/api/auth/me").json()["roles"])
+        self.assertEqual(self.client.get("/api/me/check-in-events").json()["results"], [])
+        StaffAssignment.objects.create(
+            event_id=other_event, user=staff, can_check_in=False, can_manage_support=True
+        )
+        self.assertEqual(self.client.get("/api/me/check-in-events").json()["results"], [])
         self.assertEqual(self.client.get(f"/api/events/{event}/attendees").status_code, 404)
+
+    def test_scanner_rejects_tickets_outside_the_selected_event(self):
+        selected_event, _ = self.inventory()
+        ticket_event, kind = self.inventory()
+        staff = User.objects.create_user("scanner@example.com", "secret")
+        StaffAssignment.objects.create(event_id=selected_event, user=staff)
+        StaffAssignment.objects.create(event_id=ticket_event, user=staff)
+        self.client.force_authenticate(self.buyer)
+        order = self.reserve(ticket_event, kind).json()
+        ticket = self.client.post(
+            f"/api/orders/{order['id']}/checkout", {"outcome": "success"}
+        ).json()["tickets"][0]
+
+        self.client.force_authenticate(staff)
+        verify_url = "/api/tickets/verify"
+        check_in_url = f"/api/tickets/{ticket['id']}/check-in"
+        payload = {"qr_token": ticket["qr_token"], "event_id": str(selected_event)}
+        for url in (verify_url, check_in_url):
+            with self.subTest(url=url):
+                rejected = self.client.post(url, payload)
+                self.assertEqual(rejected.status_code, 404)
+                self.assertEqual(rejected.json()["detail"], "Ticket not found for this event.")
+
+        payload["event_id"] = str(ticket_event)
+        verified = self.client.post(verify_url, payload)
+        self.assertEqual(verified.status_code, 200)
+        self.assertTrue(verified.json()["valid"])
+        admitted = self.client.post(check_in_url, payload)
+        self.assertEqual(admitted.status_code, 200)
+        self.assertEqual(admitted.json()["status"], "checked_in")
+        self.assertEqual(self.client.post(check_in_url, payload).status_code, 409)
 
     def test_malformed_event_payload_and_attendee_cannot_create_event(self):
         self.assertEqual(self.client.post("/api/events", [{}], format="json").status_code, 400)

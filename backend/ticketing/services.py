@@ -292,6 +292,26 @@ def check_in(ticket, user, token):
     return ticket
 
 
+@transaction.atomic
+def undo_check_in(ticket, user, token, reason=""):
+    """Reverse an accidental check-in (SRS 4.8, UC4) so the ticket admits again."""
+    check_qr(ticket, token)
+    # Same race guard as check_in: only a ticket still checked in is reopened, so a
+    # refund or a second undo that commits first leaves this call matching nothing.
+    reopened = Ticket.objects.filter(pk=ticket.pk, status="checked_in").update(
+        status="valid", checked_in_at=None, checked_in_by=None
+    )
+    if not reopened:
+        if ticket.status in ("cancelled", "refunded"):
+            raise Conflict("Ticket is no longer valid for entry.")
+        raise Conflict("Ticket is not checked in.")
+    ticket.status = "valid"
+    ticket.checked_in_at = None
+    ticket.checked_in_by = None
+    record_audit(ticket.order_item.order.event, user, "ticket.check_in_reversed", ticket, reason)
+    return ticket
+
+
 def record_audit(event, actor, action, entity, description=""):
     # Append-only helper: every refund/cancel/redemption path writes through here so
     # the activity timeline in SRS 4.11 has real data from the moment features land.

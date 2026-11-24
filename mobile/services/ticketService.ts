@@ -33,19 +33,15 @@ export const apiErrorMessage = (data: any, fallback: string): string => {
 export const verifyTicket = async (
   qrToken: string,
   authToken: string,
-  ticketId?: number | string
+  eventId: string
 ): Promise<VerifyResponse> => {
-  const url = ticketId 
-    ? `${API_BASE_URL}/tickets/${ticketId}/verify` 
-    : `${API_BASE_URL}/tickets/verify`;
-
-  const response = await fetch(url, {
+  const response = await fetch(`${API_BASE_URL}/tickets/verify`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`,
     },
-    body: JSON.stringify({ qr_token: qrToken }),
+    body: JSON.stringify({ qr_token: qrToken, event_id: eventId }),
   });
 
   if (!response.ok) {
@@ -59,24 +55,46 @@ export const verifyTicket = async (
 export const checkInTicket = async (
   qrToken: string,
   authToken: string,
-  ticketId?: number | string
+  eventId: string,
+  ticketId: number | string
 ): Promise<Ticket> => {
-  const url = ticketId 
-    ? `${API_BASE_URL}/tickets/${ticketId}/check-in` 
-    : `${API_BASE_URL}/tickets/check-in`;
-
-  const response = await fetch(url, {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/check-in`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${authToken}`,
     },
-    body: JSON.stringify({ qr_token: qrToken }),
+    body: JSON.stringify({ qr_token: qrToken, event_id: eventId }),
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(apiErrorMessage(errorData, 'Check-in failed'));
+  }
+
+  return response.json();
+};
+
+// Reverses an accidental check-in (SRS 4.8); the backend records it in the audit log.
+export const undoCheckIn = async (
+  qrToken: string,
+  authToken: string,
+  eventId: string,
+  ticketId: number | string,
+  reason = ''
+): Promise<Ticket> => {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/check-in/undo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+    },
+    body: JSON.stringify({ qr_token: qrToken, event_id: eventId, reason }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(apiErrorMessage(errorData, 'Undo check-in failed'));
   }
 
   return response.json();

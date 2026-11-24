@@ -1,6 +1,9 @@
 from django.test import TestCase
+from reportlab.pdfbase import pdfmetrics
 
 from accounts.models import User
+from ticketing.models import Event, Ticket, TicketType
+from ticketing.notifications import TICKET_FONT_NAME
 from ticketing.test_phase3 import Phase3Helpers
 
 
@@ -20,6 +23,25 @@ class PrintableTicketTests(Phase3Helpers, TestCase):
         self.assertIn(b"ADMISSION TICKET", response.content)
         self.assertIn(str(ticket["identifier"]).encode(), response.content)
         self.assertGreater(len(response.content), 4000)
+
+    def test_printed_ticket_embeds_cyrillic_glyphs_and_keeps_the_full_address(self):
+        event, kind = self.inventory()
+        ticket = self.buy(event, kind)["tickets"][0]
+        title = "Қазақша концерт и русская ёлка"
+        venue = "Алматы, проспект Райымбек, " + "длинный адрес " * 12 + "FLOOR-37"
+        attendee = "Әлия Төлегенова"
+        Event.objects.filter(pk=event).update(title=title, venue=venue)
+        TicketType.objects.filter(pk=kind).update(name="Кіру билеті")
+        Ticket.objects.filter(pk=ticket["id"]).update(attendee_name=attendee)
+
+        response = self.client.get(f"/api/tickets/{ticket['id']}/pdf")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"/FontFile2", response.content)
+        glyphs = pdfmetrics.getFont(TICKET_FONT_NAME).face.charToGlyph
+        for letter in "ЁёӘәҒғҚқҢңӨөҰұҮүҺһІі":
+            self.assertTrue(glyphs.get(ord(letter)), letter)
+        self.assertIn(b"FLOOR-37", response.content)
 
     def test_unrelated_attendee_cannot_download_ticket_pdf(self):
         event, kind = self.inventory()

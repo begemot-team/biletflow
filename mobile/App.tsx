@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -48,7 +48,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsError, setEventsError] = useState<string | null>(null);
-  const [assignedEvents, setAssignedEvents] = useState<AssignedEvent[]>(MOCK_ASSIGNED_EVENTS);
+  const [assignedEvents, setAssignedEvents] = useState<AssignedEvent[]>([]);
+  const [eventsRevision, setEventsRevision] = useState(0);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<{ id: string; title: string } | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
@@ -61,51 +62,51 @@ export default function App() {
     }
   };
 
-  const loadAssignedEvents = useCallback(async (token: string) => {
-    if (token === DEV_BYPASS_TOKEN) {
-      setAssignedEvents(MOCK_ASSIGNED_EVENTS);
-      setEventsError(null);
-      return;
-    }
-
-    setEventsLoading(true);
-    setEventsError(null);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/me/events`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(data.detail || data.message || 'Failed to load assigned events');
-      }
-
-      const rawList = Array.isArray(data) ? data : data.results || [];
-      const mapped: AssignedEvent[] = rawList.map((ev: any) => ({
-        id: String(ev.id),
-        title: ev.title || `Event #${ev.id}`,
-        date: formatEventDate(ev),
-        venue: ev.venue || 'Venue TBA',
-      }));
-
-      setAssignedEvents(mapped);
-    } catch (err: any) {
-      setEventsError(err.message || 'Could not fetch events from server.');
-      setAssignedEvents([]);
-    } finally {
-      setEventsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (currentScreen === 'EVENTS' && authToken) {
-      loadAssignedEvents(authToken);
+    if (currentScreen !== 'EVENTS' || !authToken || authToken === DEV_BYPASS_TOKEN) return;
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    async function loadAssignedEvents() {
+      setEventsLoading(true);
+      setEventsError(null);
+
+      try {
+        const events: AssignedEvent[] = [];
+        for (let page = 1; ; page += 1) {
+          const response = await fetch(`${API_BASE_URL}/me/check-in-events?page=${page}`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+            signal,
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.detail || data.message || 'Failed to load assigned events');
+          }
+          if (!Array.isArray(data.results)) {
+            throw new Error('The server returned an invalid event list.');
+          }
+          events.push(...data.results.map((event) => ({
+            id: String(event.id),
+            title: event.title,
+            date: formatEventDate(event),
+            venue: event.venue,
+          })));
+          if (!data.next) break;
+        }
+        if (!signal.aborted) setAssignedEvents(events);
+      } catch (err: any) {
+        if (signal.aborted) return;
+        setEventsError(err.message || 'Could not fetch events from server.');
+        setAssignedEvents([]);
+      } finally {
+        if (!signal.aborted) setEventsLoading(false);
+      }
     }
-  }, [currentScreen, authToken, loadAssignedEvents]);
+
+    loadAssignedEvents();
+    return () => controller.abort();
+  }, [currentScreen, authToken, eventsRevision]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -129,6 +130,8 @@ export default function App() {
           showAlert('Login Failed', 'Server did not return an access token.');
           return;
         }
+        setAssignedEvents([]);
+        setEventsLoading(true);
         setAuthToken(data.access);
         setCurrentScreen('EVENTS');
       } else {
@@ -144,6 +147,7 @@ export default function App() {
   const handleDevBypass = () => {
     setAuthToken(DEV_BYPASS_TOKEN);
     setAssignedEvents(MOCK_ASSIGNED_EVENTS);
+    setEventsLoading(false);
     setEventsError(null);
     setCurrentScreen('EVENTS');
   };
@@ -163,9 +167,10 @@ export default function App() {
     showAlert('QR Code Scanned', `Payload: ${code}\nEvent: ${selectedEvent?.title}`);
   };
 
-  if (currentScreen === 'SCAN') {
+  if (currentScreen === 'SCAN' && selectedEvent) {
     return (
       <ScanScreen
+        eventId={selectedEvent.id}
         authToken={authToken || DEV_BYPASS_TOKEN}
         onBack={() => setCurrentScreen('EVENTS')}
         onScanSuccess={handleScanSuccess}
@@ -191,7 +196,8 @@ export default function App() {
           <Text style={styles.title}>Assigned Events</Text>
           <View style={styles.headerActions}>
             {authToken && authToken !== DEV_BYPASS_TOKEN && (
-              <TouchableOpacity onPress={() => loadAssignedEvents(authToken)} style={styles.refreshBtn}>
+              <TouchableOpacity onPress={() => setEventsRevision((revision) => revision + 1)}
+                disabled={eventsLoading} style={styles.refreshBtn}>
                 <Text style={styles.refreshText}>Refresh</Text>
               </TouchableOpacity>
             )}

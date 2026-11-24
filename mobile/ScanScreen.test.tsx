@@ -20,7 +20,7 @@ describe('ScanScreen Component & QR Validation', () => {
 
   it('renders scan screen title and manual entry controls', async () => {
     const { getByText, getByPlaceholderText } = await render(
-      <ScanScreen onBack={jest.fn()} onScanSuccess={jest.fn()} />
+      <ScanScreen eventId="10" onBack={jest.fn()} onScanSuccess={jest.fn()} />
     );
 
     expect(getByText('Scan Ticket QR')).toBeTruthy();
@@ -47,7 +47,7 @@ describe('ScanScreen Component & QR Validation', () => {
       });
 
     const { getByTestId, findByDisplayValue, findByText } = await render(
-      <ScanScreen authToken="test-token" onBack={jest.fn()} onScanSuccess={mockScanSuccess} />
+      <ScanScreen eventId="10" authToken="test-token" onBack={jest.fn()} onScanSuccess={mockScanSuccess} />
     );
 
     const input = getByTestId('manual-input');
@@ -56,10 +56,10 @@ describe('ScanScreen Component & QR Validation', () => {
 
     fireEvent.press(getByTestId('simulate-button'));
 
-    expect(mockScanSuccess).toHaveBeenCalledWith('VALID-QR-101');
     expect(
       await findByText('Ticket Verified! Ready for Check-In.', {}, { timeout: 3000 })
     ).toBeTruthy();
+    expect(mockScanSuccess).toHaveBeenCalledWith('VALID-QR-101');
 
     const confirmBtn = await findByText('Confirm Check-In', {}, { timeout: 3000 });
     fireEvent.press(confirmBtn);
@@ -79,7 +79,7 @@ describe('ScanScreen Component & QR Validation', () => {
     });
 
     const { getByTestId, findByDisplayValue, findByText, queryByText } = await render(
-      <ScanScreen authToken="test-token" onBack={jest.fn()} />
+      <ScanScreen eventId="10" authToken="test-token" onBack={jest.fn()} />
     );
 
     fireEvent.changeText(getByTestId('manual-input'), 'USED-QR-102');
@@ -100,7 +100,7 @@ describe('ScanScreen Component & QR Validation', () => {
     });
 
     const { getByTestId, findByDisplayValue, findByText, queryByText } = await render(
-      <ScanScreen authToken="test-token" onBack={jest.fn()} />
+      <ScanScreen eventId="10" authToken="test-token" onBack={jest.fn()} />
     );
 
     fireEvent.changeText(getByTestId('manual-input'), 'REFUNDED-QR-103');
@@ -111,22 +111,26 @@ describe('ScanScreen Component & QR Validation', () => {
     expect(queryByText('Confirm Check-In')).toBeNull();
   });
 
-  it('displays error banner when QR verification fails', async () => {
+  it('rejects a ticket outside the selected event without offering check-in', async () => {
+    const mockScanSuccess = jest.fn();
     mockFetch.mockResolvedValueOnce({
       ok: false,
+      status: 404,
       json: async () => ({ detail: 'Ticket not found for this event.' }),
     });
 
-    const { getByTestId, findByDisplayValue, findByText } = await render(
-      <ScanScreen authToken="test-token" onBack={jest.fn()} />
+    const { getByTestId, findByDisplayValue, findByText, queryByText } = await render(
+      <ScanScreen eventId="10" authToken="test-token" onBack={jest.fn()} onScanSuccess={mockScanSuccess} />
     );
 
-    fireEvent.changeText(getByTestId('manual-input'), 'INVALID-QR-999');
-    await findByDisplayValue('INVALID-QR-999');
+    fireEvent.changeText(getByTestId('manual-input'), 'OTHER-EVENT-QR');
+    await findByDisplayValue('OTHER-EVENT-QR');
     fireEvent.press(getByTestId('simulate-button'));
 
     expect(
       await findByText('Ticket not found for this event.', {}, { timeout: 3000 })
     ).toBeTruthy();
+    expect(queryByText('Confirm Check-In')).toBeNull();
+    expect(mockScanSuccess).not.toHaveBeenCalled();
   });
 });
