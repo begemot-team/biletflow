@@ -67,6 +67,7 @@ from .serializers import (
     SupportReplySerializer,
     TicketSerializer,
     TicketTypeSerializer,
+    UndoCheckInSerializer,
     qr_token,
 )
 
@@ -493,6 +494,23 @@ class CheckIn(APIView):
         ticket = scanned_ticket(request, pk, token, serializer.validated_data.get("event_id"))
         self.check_object_permissions(request, ticket.order_item.order.event)
         ticket = services.check_in(ticket, request.user, token)
+        return Response(TicketSerializer(ticket).data)
+
+
+class UndoCheckIn(APIView):
+    # Anyone allowed to admit at this event may reverse their door's mistake; the
+    # audit log keeps who did it and why, so the reversal is never silent.
+    permission_classes = [permissions.IsAuthenticated, CanCheckInEvent]
+
+    def post(self, request, pk=None):
+        serializer = UndoCheckInSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        ticket = scanned_ticket(request, pk, data["qr_token"], data.get("event_id"))
+        self.check_object_permissions(request, ticket.order_item.order.event)
+        ticket = services.undo_check_in(
+            ticket, request.user, data["qr_token"], data.get("reason", "").strip()
+        )
         return Response(TicketSerializer(ticket).data)
 
 

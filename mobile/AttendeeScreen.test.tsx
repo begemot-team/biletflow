@@ -153,4 +153,74 @@ describe('AttendeeScreen Component', () => {
     expect(await findByText('You do not have permission to perform this action.')).toBeTruthy();
     expect(queryByText('Alex Johnson')).toBeNull();
   });
+
+  it('undoes a check-in after the operator confirms', async () => {
+    const checkedIn = [{ ...MOCK_ATTENDEES[1], qr_token: 'TICK-1002:signature' }];
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/check-in/undo')) {
+        return { ok: true, json: async () => ({ id: '2', identifier: 'TICK-1002', status: 'valid' }) };
+      }
+      return { ok: true, json: async () => ({ results: checkedIn }) };
+    });
+    (Alert.alert as jest.Mock).mockImplementation((title, _message, buttons) => {
+      if (title === 'Undo Check-In') buttons?.find((b: any) => b.text === 'Undo')?.onPress?.();
+    });
+
+    const { findByText } = await render(
+      <AttendeeScreen eventId="1" eventTitle="Tech Conference 2026" authToken="test-token" onBack={jest.fn()} />
+    );
+
+    fireEvent.press(await findByText('Undo'));
+
+    expect(await findByText('Check In')).toBeTruthy();
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('/tickets/2/check-in/undo'),
+      expect.objectContaining({
+        body: JSON.stringify({
+          qr_token: 'TICK-1002:signature',
+          event_id: '1',
+          reason: 'Reversed from the mobile attendee list',
+        }),
+      })
+    );
+  });
+
+  it('does not call the API when the operator cancels the undo', async () => {
+    const checkedIn = [{ ...MOCK_ATTENDEES[1], qr_token: 'TICK-1002:signature' }];
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ results: checkedIn }) });
+
+    const { findByText, getByText } = await render(
+      <AttendeeScreen eventId="1" eventTitle="Tech Conference 2026" authToken="test-token" onBack={jest.fn()} />
+    );
+
+    fireEvent.press(await findByText('Undo'));
+
+    expect(Alert.alert).toHaveBeenCalledWith('Undo Check-In', expect.any(String), expect.any(Array));
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(getByText('CHECKED IN')).toBeTruthy();
+  });
+
+  it('keeps the ticket checked in when the server refuses the undo', async () => {
+    const checkedIn = [{ ...MOCK_ATTENDEES[1], qr_token: 'TICK-1002:signature' }];
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url.includes('/check-in/undo')) {
+        return { ok: false, json: async () => ({ detail: 'Ticket is no longer valid for entry.' }) };
+      }
+      return { ok: true, json: async () => ({ results: checkedIn }) };
+    });
+    (Alert.alert as jest.Mock).mockImplementation((title, _message, buttons) => {
+      if (title === 'Undo Check-In') buttons?.find((b: any) => b.text === 'Undo')?.onPress?.();
+    });
+
+    const { findByText, getByText } = await render(
+      <AttendeeScreen eventId="1" eventTitle="Tech Conference 2026" authToken="test-token" onBack={jest.fn()} />
+    );
+
+    fireEvent.press(await findByText('Undo'));
+
+    await waitFor(() => {
+      expect(Alert.alert).toHaveBeenCalledWith('Undo Failed', 'Ticket is no longer valid for entry.');
+    });
+    expect(getByText('CHECKED IN')).toBeTruthy();
+  });
 });

@@ -1,4 +1,4 @@
-import { verifyTicket, checkInTicket, fetchEventAttendees } from './ticketService';
+import { verifyTicket, checkInTicket, fetchEventAttendees, undoCheckIn } from './ticketService';
 import { API_BASE_URL } from '../config';
 
 describe('ticketService QR validation & check-in API', () => {
@@ -106,6 +106,36 @@ describe('ticketService QR validation & check-in API', () => {
 
     await expect(verifyTicket('BAD-QR', 'staff-jwt-token', '10')).rejects.toThrow(
       'Invalid admission token.'
+    );
+  });
+
+  it('undoes a check-in with the reason for the audit log', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: '42', identifier: 'QR-VALID-1', status: 'valid' }),
+    });
+
+    const result = await undoCheckIn('QR-VALID-1', 'staff-jwt-token', '10', '42', 'Wrong guest');
+
+    expect(mockFetch).toHaveBeenCalledWith(`${API_BASE_URL}/tickets/42/check-in/undo`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer staff-jwt-token',
+      },
+      body: JSON.stringify({ qr_token: 'QR-VALID-1', event_id: '10', reason: 'Wrong guest' }),
+    });
+    expect(result.status).toBe('valid');
+  });
+
+  it('surfaces the backend error when the undo is refused', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ detail: 'Ticket is not checked in.' }),
+    });
+
+    await expect(undoCheckIn('QR-VALID-1', 'staff-jwt-token', '10', '42')).rejects.toThrow(
+      'Ticket is not checked in.'
     );
   });
 });

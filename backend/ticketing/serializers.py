@@ -328,6 +328,10 @@ class QRSerializer(StrictSerializer):
     event_id = serializers.IntegerField(min_value=1, required=False)
 
 
+class UndoCheckInSerializer(QRSerializer):
+    reason = serializers.CharField(max_length=200, required=False, allow_blank=True)
+
+
 class RefundSerializer(serializers.ModelSerializer):
     order = serializers.IntegerField(source="payment.order_id", read_only=True)
 
