@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api } from '../api/client'
-import { formatMoney } from '../utils/money'
+import { api, fieldErrors } from '../api/client'
+import { formatAmount, formatMoney } from '../utils/money'
 import { attendeesPayload, holderKeys } from '../utils/attendees'
 
 const preview = (orderId, code) =>
@@ -9,7 +9,8 @@ const preview = (orderId, code) =>
 
 // Message for a rejected promo code. 409 also covers "redemption limit reached";
 // callers re-read the order when a 409 might mean it expired instead.
-const promoError = (err) => err.body?.promo_code?.[0] ?? (err.status === 409 ? err.message : null)
+// The API sends promo_code as a plain string or as a list, fieldErrors reads both.
+const promoError = (err) => fieldErrors(err).promo_code ?? (err.status === 409 ? err.message : null)
 
 function Countdown({ until, onExpire }) {
   const [now, setNow] = useState(() => Date.now())
@@ -187,7 +188,7 @@ function Checkout() {
           {quote && (
             <dl className="mt-6 space-y-1" aria-live="polite">
               <div className="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(quote.subtotal_minor)}</dd></div>
-              <div className="flex justify-between"><dt>Discount</dt><dd>−{formatMoney(quote.discount_minor)}</dd></div>
+              <div className="flex justify-between"><dt>Discount</dt><dd>−{formatAmount(quote.discount_minor)}</dd></div>
               <div className="flex justify-between text-lg font-semibold">
                 <dt>Total</dt><dd>{formatMoney(quote.total_minor)}</dd>
               </div>
