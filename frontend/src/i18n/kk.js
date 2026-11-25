@@ -4,6 +4,7 @@ export default {
   'Language': 'Тіл',
   'Events': 'Іс-шаралар',
   'Create Event': 'Іс-шара құру',
+  'Admin panel': 'Әкімші панелі',
   'Dashboard': 'Кабинет',
   'My Tickets': 'Менің билеттерім',
   'Support': 'Қолдау',

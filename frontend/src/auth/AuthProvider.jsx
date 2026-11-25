@@ -22,6 +22,8 @@ export default function AuthProvider({ children }) {
     user,
     ready,
     isOrganizer: Boolean(user?.roles?.includes('organizer')),
+    // Only shows the header link; /admin signs in and checks the role on the server itself.
+    isPlatformAdmin: Boolean(user?.roles?.includes('platform_admin')),
     login: session.login,
     logout,
   }

@@ -4,6 +4,7 @@ export default {
   'Language': 'Язык',
   'Events': 'События',
   'Create Event': 'Создать событие',
+  'Admin panel': 'Админ-панель',
   'Dashboard': 'Кабинет',
   'My Tickets': 'Мои билеты',
   'Support': 'Поддержка',
