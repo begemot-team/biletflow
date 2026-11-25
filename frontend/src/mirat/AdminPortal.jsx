@@ -2,13 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createAdminAuth } from './adminAuth.js'
 import {
   activationStatus,
-  buildCsv,
-  downloadCsv,
   formatMoney,
   listAll,
   loadPromoActivity,
   supportStatus,
 } from './adminData.js'
+import {
+  EventReportsPanel,
+  MonitoringPanel,
+  OrdersPanel,
+  PaymentsPanel,
+  ServerExportsPanel,
+  SettingsPanel,
+} from './AdminBackOffice.jsx'
 import './workspace.css'
 
 let storage
@@ -20,9 +26,14 @@ const sections = {
   users: 'Пользователи',
   events: 'События',
   activations: 'Активация продаж',
-  complaints: 'Жалобы на события',
+  orders: 'Заказы',
+  payments: 'Платежи',
+  monitoring: 'Финансовый мониторинг',
+  reports: 'Жалобы на события',
+  complaints: 'Обращения посетителей',
   support: 'Эскалации',
   promos: 'Промокоды',
+  settings: 'Настройки платформы',
   exports: 'Экспорт отчётов',
 }
 
@@ -41,25 +52,38 @@ function useAdminList(path) {
   }, [path])
   useEffect(() => {
     let active = true
-    listAll(auth.api, path).then(value => { if (active) setItems(value) }).catch(failure => { if (active) setError(failure.message) })
+    listAll(auth.api, path).then(value => { if (active) { setItems(value); setError('') } }).catch(failure => { if (active) setError(failure.message) })
     return () => { active = false }
   }, [path])
   return { items, setItems, error, setError, load }
 }
 
 function Overview({ select }) {
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let active = true
+    auth.api('/admin/summary').then(value => { if (active) setSummary(value) }).catch(failure => { if (active) setError(failure.message) })
+    return () => { active = false }
+  }, [])
   const cards = [
     ['activations', 'Активации', 'Реальные записи и приостановка продаж'],
     ['users', 'Пользователи', 'Поиск, блокировка и восстановление'],
     ['events', 'События', 'Поиск и модерация событий'],
-    ['complaints', 'Жалобы', 'Обращения посетителей по событиям'],
+    ['orders', 'Заказы', 'Поиск по всей платформе', 'orders'],
+    ['payments', 'Платежи', 'Симулированные оплаты и комиссии', 'payments'],
+    ['monitoring', 'Финансовый мониторинг', 'Ошибки, возвраты и споры', [['payment_failures', 'ошибок'], ['refunds', 'возвратов'], ['open_disputes', 'споров']]],
+    ['reports', 'Жалобы', 'Проверка жалоб на события', 'open_event_reports'],
+    ['complaints', 'Обращения', 'Поддержка посетителей по событиям'],
     ['support', 'Эскалации', 'Обращения организаторов к платформе'],
     ['promos', 'Промокоды', 'Использования, скидки и возвраты'],
+    ['settings', 'Настройки', 'Сумма активации и комиссия'],
     ['exports', 'Отчёты', 'CSV для операционной проверки'],
   ]
   return <>
     <section className="mw-panel"><p className="mw-eyebrow">PHASE 06 · OPERATIONS</p><h2>Управление платформой</h2><p>Проверяйте пользователей, события, платные продажи, обращения и промокампании. Все данные ниже загружаются из BiletFlow API.</p></section>
-    <div className="mw-stats mw-admin-stats">{cards.map(([key, title, detail]) => <button key={key} className="mw-panel mw-dashboard-link" onClick={() => select(key)}><strong>{title}</strong><small>{detail}</small></button>)}</div>
+    {error && <p className="mw-notice" role="alert">Сводка временно недоступна: {error}</p>}
+    <div className="mw-stats mw-admin-stats">{cards.map(([key, title, detail, metric]) => <button key={key} className="mw-panel mw-dashboard-link" onClick={() => select(key)}><strong>{title}</strong>{metric && summary && <span className="mw-summary-count">{Array.isArray(metric) ? metric.map(([name, label]) => `${summary[name]} ${label}`).join(' · ') : summary[metric]}</span>}<small>{detail}</small></button>)}</div>
   </>
 }
 
@@ -163,55 +187,20 @@ function PromosPanel() {
   return <section className="mw-panel"><div className="mw-account"><div><h2>Активность промокодов</h2><p>Сводка по всем кампаниям: применения, билеты, скидки, возвраты и итоговая выручка.</p></div><button disabled={!rows} onClick={load}>Обновить</button></div>{error && <p className="mw-notice" role="alert">{error}</p>}{!rows ? <p role="status">Загружаем кампании…</p> : rows.length === 0 ? <p>Промокампаний пока нет.</p> : <div className="mw-table"><table><thead><tr><th>Кампания</th><th>Код</th><th>Использования</th><th>Билеты</th><th>Скидка</th><th>Возвраты</th><th>Итого</th></tr></thead><tbody>{rows.map(item => <tr key={item.id}><td>{item.name} · #{item.id}<br /><small>{item.event_title} · событие #{item.event}</small></td><td>{item.codes.map(code => code.code).join(', ')}</td><td>{item.report.redemptions}{item.max_redemptions ? ` / ${item.max_redemptions}` : ''}</td><td>{item.report.tickets_sold}</td><td>{formatMoney(item.report.discount_minor)}</td><td>{formatMoney(item.report.refund_minor)}</td><td>{formatMoney(item.report.net_minor)}</td></tr>)}</tbody></table></div>}</section>
 }
 
-function ExportsPanel() {
-  const [busy, setBusy] = useState('')
-  const [error, setError] = useState('')
-  async function exportRows(kind) {
-    setBusy(kind); setError('')
-    try {
-      let columns
-      let rows
-      if (kind === 'events') {
-        rows = await listAll(auth.api, '/me/events')
-        columns = [
-          { label: 'ID', value: row => row.id }, { label: 'Событие', value: row => row.title },
-          { label: 'Место', value: row => row.venue }, { label: 'Начало', value: row => row.starts_at },
-          { label: 'Опубликовано', value: row => row.published }, { label: 'Отменено', value: row => Boolean(row.cancelled_at) },
-          { label: 'Приостановлено', value: row => Boolean(row.suspended_at) }, { label: 'Причина', value: row => row.suspension_reason },
-        ]
-      } else if (kind === 'support') {
-        rows = await listAll(auth.api, '/support-cases')
-        columns = [
-          { label: 'ID', value: row => row.id }, { label: 'Тип', value: row => row.kind },
-          { label: 'Категория', value: row => row.category }, { label: 'Тема', value: row => row.subject },
-          { label: 'Статус', value: row => row.status }, { label: 'Пользователь', value: row => row.requester_email },
-          { label: 'Событие', value: row => row.event }, { label: 'Обновлено', value: row => row.updated_at },
-        ]
-      } else {
-        const events = await listAll(auth.api, '/me/events')
-        rows = await loadPromoActivity(auth.api, events)
-        columns = [
-          { label: 'ID', value: row => row.id }, { label: 'Кампания', value: row => row.name },
-          { label: 'Событие', value: row => row.event_title }, { label: 'Промокоды', value: row => row.codes.map(code => code.code).join(' ') },
-          { label: 'Применения', value: row => row.report.redemptions }, { label: 'Билеты', value: row => row.report.tickets_sold },
-          { label: 'Скидка, тиын', value: row => row.report.discount_minor }, { label: 'Возвраты, тиын', value: row => row.report.refund_minor },
-          { label: 'Итого, тиын', value: row => row.report.net_minor },
-        ]
-      }
-      downloadCsv(`biletflow-${kind}-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(columns, rows))
-    } catch (failure) { setError(failure.message) } finally { setBusy('') }
-  }
-  return <section className="mw-panel"><h2>Экспорт операционных отчётов</h2><p>CSV формируется из текущих серверных данных. Денежные поля в отчёте промокодов экспортируются в тиынах, без округления.</p>{error && <p className="mw-notice" role="alert">{error}</p>}<div className="mw-export-grid"><button disabled={Boolean(busy)} onClick={() => exportRows('events')}>{busy === 'events' ? 'Готовим…' : 'События (.csv)'}</button><button disabled={Boolean(busy)} onClick={() => exportRows('support')}>{busy === 'support' ? 'Готовим…' : 'Обращения (.csv)'}</button><button disabled={Boolean(busy)} onClick={() => exportRows('promos')}>{busy === 'promos' ? 'Готовим…' : 'Промокоды (.csv)'}</button></div><p className="mw-muted">Поиск заказов, платежей, споров и ошибок оплаты появится здесь после добавления соответствующих backend API и записей платёжных попыток.</p></section>
-}
-
 function panel(section) {
   if (section === 'users') return <UsersPanel />
   if (section === 'events') return <EventsPanel />
   if (section === 'activations') return <ActivationsPanel />
+  if (section === 'orders') return <OrdersPanel api={auth.api} />
+  if (section === 'payments') return <PaymentsPanel api={auth.api} />
+  if (section === 'monitoring') return <MonitoringPanel api={auth.api} />
+  if (section === 'reports') return <EventReportsPanel api={auth.api} />
   if (section === 'complaints') return <CasesPanel kind="attendee" />
   if (section === 'support') return <CasesPanel kind="platform" />
   if (section === 'promos') return <PromosPanel />
-  return <ExportsPanel />
+  if (section === 'settings') return <SettingsPanel api={auth.api} />
+  if (section === 'exports') return <ServerExportsPanel api={auth.api} />
+  return <ServerExportsPanel api={auth.api} />
 }
 
 export default function AdminPortal() {
