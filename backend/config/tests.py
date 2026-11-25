@@ -22,6 +22,34 @@ class HealthTests(TestCase):
         self.assertNotContains(response, "private-host", status_code=503)
 
 
+class MessageLanguageTests(TestCase):
+    def test_framework_messages_follow_accept_language(self):
+        expected = {
+            "kk": "Бұл мән бос болмауы керек.",
+            "ru": "Это поле не может быть пустым.",
+            "en": "This field may not be blank.",
+        }
+        for language, message in expected.items():
+            with self.subTest(language=language):
+                response = self.client.post(
+                    "/api/auth/register",
+                    {"email": "", "password": ""},
+                    content_type="application/json",
+                    headers={"Accept-Language": language},
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(response.json()["email"], [message])
+
+    def test_unknown_language_keeps_the_default(self):
+        response = self.client.post(
+            "/api/auth/register",
+            {"email": "", "password": ""},
+            content_type="application/json",
+            headers={"Accept-Language": "de"},
+        )
+        self.assertEqual(response.json()["email"], ["Это поле не может быть пустым."])
+
+
 class DatabaseUrlTests(SimpleTestCase):
     def test_heroku_url_becomes_tls_postgres_settings(self):
         db = database_from_url("postgres://u%40x:p%2Fw@host.example:6543/name")

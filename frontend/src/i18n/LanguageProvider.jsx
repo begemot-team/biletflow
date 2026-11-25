@@ -1,20 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LanguageContext } from './i18n.js'
+import { saveLanguage, savedLanguage } from './savedLanguage.js'
 import { formatDate, normalizeLanguage, translate } from './translate.js'
 
-const KEY = 'biletflow.language'
-
-function savedLanguage() {
-  try { return normalizeLanguage(localStorage.getItem(KEY)) } catch { return normalizeLanguage(null) }
-}
-
-// The choice is kept in localStorage, so it survives a reload and a new tab.
 export default function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(savedLanguage)
 
   useEffect(() => {
     document.documentElement.lang = language // screen readers pick the right voice
-    try { localStorage.setItem(KEY, language) } catch { /* Storage may be disabled. */ }
+    saveLanguage(language)
   }, [language])
 
   const value = useMemo(() => ({

@@ -1,3 +1,4 @@
+import { savedLanguage } from '../i18n/savedLanguage.js'
 import { createSession } from './session.js'
 
 export { ApiError } from './session.js'
@@ -11,7 +12,7 @@ try {
 
 // Attendee and organizer session; the admin portal keeps its own one
 // (mirat/adminAuth.js) built on the same createSession.
-export const session = createSession({ storage, key: 'biletflow.session' })
+export const session = createSession({ storage, key: 'biletflow.session', language: savedLanguage })
 
 export const api = session.api
 

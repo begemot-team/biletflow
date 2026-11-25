@@ -103,3 +103,21 @@ test('blob responses are returned as Blob for authorised images', async () => {
   const blob = await app.session.api('/tickets/1/qr', { as: 'blob' })
   assert.equal(await blob.text(), '<svg/>')
 })
+
+test('requests carry the language chosen at that moment', async () => {
+  const sent = []
+  let language = 'kk'
+  const session = createSession({
+    storage: { getItem: () => JSON.stringify(pair), setItem() {}, removeItem() {} },
+    key: 'test.session',
+    language: () => language,
+    request: async (_, { headers }) => { sent.push(headers['Accept-Language']); return json({}) },
+  })
+  await session.api('/events')
+  language = 'ru'
+  await session.api('/events')
+  assert.deepEqual(sent, ['kk', 'ru'])
+  const plain = setup(() => json({}))
+  await plain.session.api('/events', { auth: false })
+  assert.equal(Object.hasOwn(plain.calls[0].headers, 'Accept-Language'), false)
+})

@@ -15,7 +15,7 @@ function errorText(value) {
   return ''
 }
 
-export function createCampaignApi(storage, transport = fetch) {
+export function createCampaignApi(storage, transport = fetch, language) {
   let tokens = null
   let renewal = null
   let version = 0
@@ -39,7 +39,7 @@ export function createCampaignApi(storage, transport = fetch) {
     try {
       response = await transport(`/api${path}`, {
         method: body === undefined ? 'GET' : 'POST',
-        headers: { ...(body !== undefined && { 'Content-Type': 'application/json' }), ...(access && { Authorization: `Bearer ${access}` }) },
+        headers: { ...(body !== undefined && { 'Content-Type': 'application/json' }), ...(access && { Authorization: `Bearer ${access}` }), ...(language && { 'Accept-Language': language() }) },
         ...(body !== undefined && { body: JSON.stringify(body) }),
         signal: AbortSignal.timeout(15000),
       })

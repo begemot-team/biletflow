@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n/i18n.js'
+import { savedLanguage } from '../i18n/savedLanguage.js'
 import { campaignPayload, createCampaignApi } from './campaignApi.js'
 import './workspace.css'
 
@@ -8,7 +9,7 @@ const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
 let storage
 try { storage = window.sessionStorage } catch { storage = { getItem: () => null, setItem() {}, removeItem() {} } }
-const api = createCampaignApi(storage)
+const api = createCampaignApi(storage, fetch, savedLanguage)
 let initialSession
 function restore() {
   // React StrictMode must not rotate the same refresh token twice on mount.
