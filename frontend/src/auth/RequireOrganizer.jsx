@@ -13,7 +13,7 @@ function OrganizerOnly({ children }) {
         <h2 className="text-2xl font-semibold">{t('Organizer account required')}</h2>
         <p className="mt-4 text-gray-600">
           {t('Only organizer accounts can create events.')}{' '}
-          <Link to="/register" className="text-indigo-600 underline">
+          <Link to="/register" className="text-brand-700 underline">
             {t('Register as an organizer')}
           </Link>
         </p>

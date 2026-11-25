@@ -32,7 +32,7 @@ function SupportCases() {
     <main className="mx-auto max-w-3xl px-6 py-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">{t('Support')}</h1>
-        <Link to="/support/new" className="rounded bg-black px-4 py-2 text-white">{t('New case')}</Link>
+        <Link to="/support/new" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">{t('New case')}</Link>
       </div>
       <label className="mt-6 block text-sm">
         {t('Status')}{' '}
@@ -47,7 +47,7 @@ function SupportCases() {
       {cases?.length === 0 && (
         <p className="mt-6 text-gray-600">
           {status ? t('No cases with this status.') : t('No cases.')} {t('Need help with a ticket? Open it from')}{' '}
-          <Link to="/account" className="text-indigo-600 underline">{t('My Tickets')}</Link>.
+          <Link to="/account" className="text-brand-700 underline">{t('My Tickets')}</Link>.
         </p>
       )}
       {cases?.length > 0 && (
@@ -62,7 +62,7 @@ function SupportCases() {
                     {isSupportSide(c, user) && ` · ${t('from {email}', { email: c.requester_email })}`} · {date(c.updated_at, SHORT)}
                   </span>
                 </span>
-                <span className={`rounded px-2 py-0.5 text-xs ${c.status === 'resolved' ? 'bg-gray-200' : 'bg-amber-100'}`}>
+                <span className={`rounded px-2 py-0.5 text-xs ${c.status === 'resolved' ? 'bg-gray-200 text-gray-700' : 'bg-amber-100 text-amber-800'}`}>
                   {t(statusLabel(c.status, isSupportSide(c, user)))}
                 </span>
               </Link>

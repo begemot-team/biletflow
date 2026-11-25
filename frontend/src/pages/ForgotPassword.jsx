@@ -32,7 +32,7 @@ function ForgotPassword() {
     <AuthCard
       title={t('Reset password')}
       footer={
-        <Link to="/login" state={location.state} className="text-indigo-600 underline">
+        <Link to="/login" state={location.state} className="text-brand-700 underline">
           {t('Back to login')}
         </Link>
       }
@@ -43,7 +43,7 @@ function ForgotPassword() {
             {t('If an account exists for {email}, we sent it a reset code. It works for one hour.', { email: email.trim() })}
           </p>
           <Link to="/reset-password" state={location.state}
-            className="block w-full rounded bg-black py-2.5 text-center text-lg text-white">
+            className="block w-full rounded bg-brand-600 hover:bg-brand-700 py-2.5 text-center text-lg text-white">
             {t('I have the code')}
           </Link>
         </div>
@@ -53,7 +53,7 @@ function ForgotPassword() {
           <Field label={t('Email')} name="email" type="email" autoComplete="email" required
             value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
           {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
-          <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
+          <button disabled={submitting} className="w-full rounded bg-brand-600 hover:bg-brand-700 py-2.5 text-lg text-white disabled:opacity-50">
             {submitting ? t('Sending…') : t('Send reset code')}
           </button>
         </form>

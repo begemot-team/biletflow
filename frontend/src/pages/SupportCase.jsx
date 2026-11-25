@@ -137,7 +137,7 @@ function CaseThread({ id }) {
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-        <span className={`rounded px-2 py-0.5 ${resolved ? 'bg-gray-200' : 'bg-amber-100'}`}>
+        <span className={`rounded px-2 py-0.5 ${resolved ? 'bg-gray-200 text-gray-700' : 'bg-amber-100 text-amber-800'}`}>
           {t(statusLabel(supportCase.status, staff))}
         </span>
         <span className="text-gray-600">
@@ -167,10 +167,10 @@ function CaseThread({ id }) {
               </label>
             ) : supportCase.assigned_to === user.id ? (
               <button type="button" disabled={busy} onClick={() => change({ assigned_to: null })}
-                className="text-indigo-600 underline disabled:opacity-50">{t('Unassign me')}</button>
+                className="text-brand-700 underline disabled:opacity-50">{t('Unassign me')}</button>
             ) : (
               <button type="button" disabled={busy} onClick={() => change({ assigned_to: user.id })}
-                className="text-indigo-600 underline disabled:opacity-50">{t('Assign to me')}</button>
+                className="text-brand-700 underline disabled:opacity-50">{t('Assign to me')}</button>
             )}
           </>
         )}
@@ -180,7 +180,7 @@ function CaseThread({ id }) {
         {messages.map((m) => {
           const mine = m.author === user.id
           return (
-            <li key={m.id} className={`max-w-[85%] rounded-xl border p-3 ${mine ? 'ml-auto bg-indigo-50' : 'bg-white'}`}>
+            <li key={m.id} className={`max-w-[85%] rounded-xl border p-3 ${mine ? 'ml-auto bg-brand-50' : 'bg-white'}`}>
               <p className="text-xs text-gray-500">
                 {mine ? t('You') : m.author === supportCase.requester ? m.author_email : `${m.author_email} · ${t('support')}`}
                 {' · '}{date(m.created_at, SHORT)}
@@ -196,7 +196,7 @@ function CaseThread({ id }) {
       {resolved ? (
         <p className="mt-6 rounded-xl border bg-gray-50 p-4 text-sm">
           {t('This case is resolved and closed for replies.')}{' '}
-          {!staff && <Link to={`/support/new${reopenLink}`} className="text-indigo-600 underline">{t('Open a new case')}</Link>}
+          {!staff && <Link to={`/support/new${reopenLink}`} className="text-brand-700 underline">{t('Open a new case')}</Link>}
         </p>
       ) : (
         <form onSubmit={send} className="mt-6">
@@ -205,7 +205,7 @@ function CaseThread({ id }) {
             <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={3} maxLength={5000}
               placeholder={t('Write a reply…')} className="w-full rounded border bg-white px-3 py-2" />
           </label>
-          <button disabled={busy || !reply.trim()} className="mt-2 rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+          <button disabled={busy || !reply.trim()} className="mt-2 rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
             {busy ? t('Sending…') : t('Send')}
           </button>
         </form>

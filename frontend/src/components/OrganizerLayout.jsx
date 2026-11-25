@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 
 const linkClass = ({ isActive }) =>
-  `block rounded px-3 py-2 ${isActive ? 'bg-gray-200 font-semibold' : 'text-gray-600 hover:bg-gray-100'}`
+  `block rounded px-3 py-2 ${isActive ? 'bg-brand-600 font-semibold text-white' : 'text-gray-600 hover:bg-brand-100 hover:text-brand-800'}`
 
 // Organizer dashboard shell: side navigation + the page in <Outlet />.
 // Mirat's analytics views (SRS 4.15) get their own child route and link here.

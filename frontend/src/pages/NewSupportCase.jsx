@@ -124,7 +124,7 @@ function NewSupportCase() {
           {errors.message && <span className="mt-1 block text-sm text-red-600">{t(errors.message)}</span>}
         </label>
         {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
-        <button disabled={submitting} className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+        <button disabled={submitting} className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
           {submitting ? t('Sending…') : t('Open case')}
         </button>
       </form>

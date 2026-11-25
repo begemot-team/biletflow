@@ -6,10 +6,10 @@ import { dashboardTotals, ticketsSold } from '../utils/sales'
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' })
 
-function Stat({ label, value }) {
+function Stat({ label, value, color }) {
   return (
-    <div className="rounded-xl border bg-white p-4">
-      <p className="text-sm text-gray-600">{label}</p>
+    <div className={`rounded-xl p-4 ${color}`}>
+      <p className="text-sm">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>
   )
@@ -47,26 +47,26 @@ function Dashboard() {
     <main>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">Overview</h1>
-        <Link to="/organizer/events/new" className="rounded bg-black px-4 py-2 text-white">Create event</Link>
+        <Link to="/organizer/events/new" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">Create event</Link>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Events (published)" value={`${totals.events} (${totals.published})`} />
-        <Stat label="Tickets sold" value={totals.sold} />
-        <Stat label="Gross sales" value={formatAmount(totals.gross)} />
-        <Stat label="Estimated payout" value={formatAmount(totals.payout)} />
+        <Stat color="bg-brand-100 text-brand-900" label="Events (published)" value={`${totals.events} (${totals.published})`} />
+        <Stat color="bg-brand-50 text-brand-900" label="Tickets sold" value={totals.sold} />
+        <Stat color="bg-sun-100 text-brand-900" label="Gross sales" value={formatAmount(totals.gross)} />
+        <Stat color="bg-cat-sports/12 text-brand-900" label="Estimated payout" value={formatAmount(totals.payout)} />
       </div>
       <p className="mt-2 text-xs text-gray-500">Payments are simulated. Payout = gross − refunds − processing fees.</p>
 
       {events.length === 0 ? (
         <p className="mt-8 text-gray-600">
-          You have no events yet. <Link to="/organizer/events/new" className="text-indigo-600 underline">Create one</Link>
+          You have no events yet. <Link to="/organizer/events/new" className="text-brand-700 underline">Create one</Link>
         </p>
       ) : (
         <div className="relative mt-8 overflow-x-auto rounded-xl border bg-white">
           {/* relative: keeps the absolutely positioned sr-only header inside this scroll box on phones */}
           <table className="w-full text-left text-sm">
-            <thead className="border-b bg-gray-50 text-gray-600">
+            <thead className="border-b bg-brand-50 text-brand-800">
               <tr>
                 <th className="p-3 font-medium">Event</th>
                 <th className="p-3 font-medium">Date</th>
@@ -82,7 +82,7 @@ function Dashboard() {
                   <tr key={ev.id}>
                     <td className="p-3">
                       <strong>{ev.title}</strong>
-                      <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published && !ev.cancelled_at ? 'bg-green-100' : 'bg-gray-200'}`}>
+                      <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published && !ev.cancelled_at ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
                         {ev.cancelled_at ? 'Cancelled' : ev.published ? 'Published' : 'Draft'}
                       </span>
                     </td>
@@ -90,7 +90,7 @@ function Dashboard() {
                     <td className="p-3 text-right">{summary ? `${ticketsSold(summary)} / ${ev.capacity}` : '—'}</td>
                     <td className="p-3 text-right">{summary ? formatAmount(summary.gross_minor) : '—'}</td>
                     <td className="whitespace-nowrap p-3 text-right">
-                      <Link to={`/organizer/events/${ev.id}`} className="text-indigo-600 underline">Sales</Link>
+                      <Link to={`/organizer/events/${ev.id}`} className="text-brand-700 underline">Sales</Link>
                     </td>
                   </tr>
                 )

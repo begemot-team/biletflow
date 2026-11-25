@@ -59,7 +59,7 @@ function AuditEntries({ eventId, query }) {
       {entries?.length > 0 && (
         <ol className="mt-4 space-y-3 border-l-2 border-gray-200 pl-5">
           {entries.map((entry) => (
-            <li className="relative rounded-xl border bg-white p-4 before:absolute before:-left-[1.7rem] before:top-5 before:h-3 before:w-3 before:rounded-full before:bg-indigo-600" key={entry.id}>
+            <li className="relative rounded-xl border bg-white p-4 before:absolute before:-left-[1.7rem] before:top-5 before:h-3 before:w-3 before:rounded-full before:bg-brand-600" key={entry.id}>
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <strong>{actionLabel(entry.action)}</strong>
                 <time className="text-xs text-gray-500" dateTime={entry.created_at}>{auditDateTime.format(new Date(entry.created_at))}</time>
@@ -109,8 +109,8 @@ function EventActivity({ event }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h2 className="text-xl font-semibold">Activity · {event.title}</h2><p className="text-sm text-gray-600">Newest first · Almaty time</p></div>
         <div className="flex flex-wrap gap-3">
-          <Link to={`/organizer/events/${event.id}`} className="text-indigo-600 underline">Open event</Link>
-          {canDuplicate && <button type="button" disabled={duplicating} onClick={duplicate} className="text-indigo-600 underline disabled:opacity-50">
+          <Link to={`/organizer/events/${event.id}`} className="text-brand-700 underline">Open event</Link>
+          {canDuplicate && <button type="button" disabled={duplicating} onClick={duplicate} className="text-brand-700 underline disabled:opacity-50">
             {duplicating ? 'Duplicating…' : 'Duplicate as draft'}
           </button>}
         </div>
@@ -129,7 +129,7 @@ function EventActivity({ event }) {
             {Object.entries(ACTIVITY_LABELS).map(([action, label]) => <option key={action} value={action}>{label}</option>)}
           </select>
         </label>
-        <button type="submit" className="rounded bg-black px-4 py-2 text-white">Apply filters</button>
+        <button type="submit" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">Apply filters</button>
         <button type="reset" className="rounded border px-4 py-2">Clear filters</button>
       </form>
       <AuditEntries key={query} eventId={event.id} query={query} />
@@ -161,7 +161,7 @@ export default function EventHistory() {
           <h1 className="text-3xl font-bold">Event history</h1>
           <p className="mt-1 text-gray-600">Event lifecycle and the append-only activity timeline.</p>
         </div>
-        <Link to="/organizer/events" className="text-indigo-600 underline">Manage events</Link>
+        <Link to="/organizer/events" className="text-brand-700 underline">Manage events</Link>
       </div>
 
       <section className="mt-6 rounded-xl border bg-white p-4">
@@ -182,11 +182,11 @@ export default function EventHistory() {
               <tbody className="divide-y">
                 {visible.map((item) => {
                   const value = eventStatus(item)
-                  return <tr key={item.id} className={item.id === current?.id ? 'bg-indigo-50' : ''}>
+                  return <tr key={item.id} className={item.id === current?.id ? 'bg-brand-50' : ''}>
                     <td className="p-3"><strong>{item.title}</strong><span className="block text-xs text-gray-500">{item.venue}</span></td>
                     <td className="whitespace-nowrap p-3">{dateTime.format(new Date(item.starts_at))}<span className="block text-xs text-gray-500">to {dateTime.format(new Date(item.ends_at))}</span></td>
                     <td className="p-3"><span className={`rounded px-2 py-1 text-xs font-medium ${badge[value]}`}>{statusLabel(value)}</span></td>
-                    <td className="p-3 text-right"><button className="text-indigo-600 underline" onClick={() => setEventId(item.id)}>View activity</button></td>
+                    <td className="p-3 text-right"><button className="text-brand-700 underline" onClick={() => setEventId(item.id)}>View activity</button></td>
                   </tr>
                 })}
               </tbody>

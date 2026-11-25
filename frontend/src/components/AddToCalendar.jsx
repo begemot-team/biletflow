@@ -21,11 +21,11 @@ export default function AddToCalendar({ event, className = '' }) {
 
   return (
     <span className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-sm ${className}`}>
-      <button type="button" onClick={download} className="text-indigo-600 underline">
+      <button type="button" onClick={download} className="text-brand-700 underline">
         {t('Add to calendar (.ics)')}
       </button>
       <a href={googleCalendarUrl(event, pageUrl)} target="_blank" rel="noopener noreferrer"
-        className="text-indigo-600 underline">
+        className="text-brand-700 underline">
         Google Calendar ↗
       </a>
     </span>

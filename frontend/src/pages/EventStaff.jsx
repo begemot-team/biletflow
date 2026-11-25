@@ -131,7 +131,7 @@ function EventStaff() {
         </fieldset>
         <p className="text-xs text-gray-500">To change permissions, remove the person and add them again.</p>
         {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={busy} className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+        <button disabled={busy} className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
           {busy ? 'Saving…' : 'Add Event Admin'}
         </button>
       </form>

@@ -73,11 +73,11 @@ function EventSales() {
           </p>
         </div>
         <span className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {!cancelled && <Link to={`/organizer/events/${id}/edit`} className="text-indigo-600 underline">Edit &amp; tickets</Link>}
-          <Link to={`/organizer/events/${id}/staff`} className="text-indigo-600 underline">Event Admins</Link>
-          {!cancelled && <Link to={`/organizer/events/${id}/activation`} className="text-indigo-600 underline">Paid sales</Link>}
-          <Link to={`/organizer/analytics?event=${id}`} className="text-indigo-600 underline">Analytics</Link>
-          {event.published && <Link to={`/events/${id}`} className="text-indigo-600 underline">Public page</Link>}
+          {!cancelled && <Link to={`/organizer/events/${id}/edit`} className="text-brand-700 underline">Edit &amp; tickets</Link>}
+          <Link to={`/organizer/events/${id}/staff`} className="text-brand-700 underline">Event Admins</Link>
+          {!cancelled && <Link to={`/organizer/events/${id}/activation`} className="text-brand-700 underline">Paid sales</Link>}
+          <Link to={`/organizer/analytics?event=${id}`} className="text-brand-700 underline">Analytics</Link>
+          {event.published && <Link to={`/events/${id}`} className="text-brand-700 underline">Public page</Link>}
           {!cancelled && new Date(event.ends_at) > new Date() && (
             <button type="button" disabled={cancelling} onClick={cancelEvent}
               className="text-red-700 underline disabled:opacity-50">
@@ -94,7 +94,7 @@ function EventSales() {
           {activation.status === 'suspended'
             ? 'Paid sales for this event are suspended by a platform admin.'
             : 'Paid tickets cannot be bought until paid sales are activated.'}{' '}
-          <Link to={`/organizer/events/${id}/activation`} className="text-indigo-600 underline">Open the checklist</Link>
+          <Link to={`/organizer/events/${id}/activation`} className="text-brand-700 underline">Open the checklist</Link>
         </p>
       )}
 
@@ -116,12 +116,12 @@ function EventSales() {
       <h2 className="mt-8 text-xl font-semibold">By ticket type</h2>
       {sales.ticket_types.length === 0 ? (
         <p className="mt-2 text-gray-600">
-          No ticket types yet. {!cancelled && <Link to={`/organizer/events/${id}/edit`} className="text-indigo-600 underline">Add one</Link>}
+          No ticket types yet. {!cancelled && <Link to={`/organizer/events/${id}/edit`} className="text-brand-700 underline">Add one</Link>}
         </p>
       ) : (
         <div className="relative mt-3 overflow-x-auto rounded-xl border bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="border-b bg-gray-50 text-gray-600">
+            <thead className="border-b bg-brand-50 text-brand-800">
               <tr>
                 <th className="p-3 font-medium">Type</th>
                 <th className="p-3 text-right font-medium">Price</th>

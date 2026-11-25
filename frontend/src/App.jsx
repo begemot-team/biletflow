@@ -35,43 +35,43 @@ function App() {
   const isAuthModal = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-canvas">
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-4">
-          <Link to="/" className="text-2xl font-bold">Begemot.com</Link>
+          <Link to="/" className="text-2xl font-bold text-brand-700">Begemot.com</Link>
 
           <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <Link to="/" className="text-gray-600 hover:text-black">
+            <Link to="/" className="text-gray-600 hover:text-brand-700">
               {t("Events")}
             </Link>
 
             {!user && (
-              <Link to="/organizer/events/new" className="text-gray-600 hover:text-black">
+              <Link to="/organizer/events/new" className="text-gray-600 hover:text-brand-700">
                 {t("Create Event")}
               </Link>
             )}
 
             {isOrganizer && (
-              <Link to="/organizer" className="text-gray-600 hover:text-black">
+              <Link to="/organizer" className="text-gray-600 hover:text-brand-700">
                 {t("Dashboard")}
               </Link>
             )}
 
             {user ? (
               <>
-                <Link to="/account" className="text-gray-600 hover:text-black">
+                <Link to="/account" className="text-gray-600 hover:text-brand-700">
                   {t("My Tickets")}
                 </Link>
-                <Link to="/support" className="text-gray-600 hover:text-black">
+                <Link to="/support" className="text-gray-600 hover:text-brand-700">
                   {t("Support")}
                 </Link>
                 <span className="text-gray-600">{user.first_name || user.email}</span>
-                <button onClick={logout} className="text-gray-600 hover:text-black">
+                <button onClick={logout} className="text-gray-600 hover:text-brand-700">
                   {t("Logout")}
                 </button>
               </>
             ) : (
-              <Link to="/login" className="text-gray-600 hover:text-black">
+              <Link to="/login" className="text-gray-600 hover:text-brand-700">
                 {t("Login")}
               </Link>
             )}

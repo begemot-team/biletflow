@@ -33,7 +33,7 @@ export default function VerifyEmail() {
 
   return (
     <AuthCard title={verified ? t('Email verified') : t('Verify your email')}
-      footer={<Link to="/account" className="text-indigo-600 underline">{t('Go to my account')}</Link>}>
+      footer={<Link to="/account" className="text-brand-700 underline">{t('Go to my account')}</Link>}>
       {verified ? (
         <p role="status">{t('Your email address is verified.')}</p>
       ) : !uid || !token ? (
@@ -42,7 +42,7 @@ export default function VerifyEmail() {
         <form onSubmit={verify} className="space-y-4">
           <p>{t('Confirm the email address for your BiletFlow account.')}</p>
           {error && <p role="alert" className="text-sm text-red-600">{t(error)}</p>}
-          <button disabled={verifying} className="w-full rounded bg-black py-2.5 text-white disabled:opacity-50">
+          <button disabled={verifying} className="w-full rounded bg-brand-600 hover:bg-brand-700 py-2.5 text-white disabled:opacity-50">
             {verifying ? t('Verifying…') : t('Verify email')}
           </button>
         </form>
