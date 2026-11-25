@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "mobile",
-    "slug": "mobile",
+    "slug": "biletflow-scanner",
+    "owner": "nursat234567890",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,8 +10,22 @@
     "experiments": {
       "baseUrl": "/scanner"
     },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f63db95f-e70c-424b-ab2a-40808d673aeb",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "kz.biletflow.scanner.dev",
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleDisplayName": "BiletFlow Scanner",
+        "NSCameraUsageDescription": "BiletFlow Scanner uses the camera to read ticket QR codes."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,6 +38,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f63db95f-e70c-424b-ab2a-40808d673aeb"
+      }
     }
   }
 }
