@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, fieldErrors } from '../api/client'
 import { formatMoney, parseTenge } from '../utils/money'
+import { useI18n } from '../i18n/i18n.js'
 
 const empty = { name: '', price: '0', quantity: '100', max_per_order: '10' }
 
@@ -17,6 +18,7 @@ function Input({ label, error, ...props }) {
 
 // Organizer-side ticket types ("tariffs") of one event: list, add, hide/show.
 export default function TicketTypes({ eventId }) {
+  const { t } = useI18n()
   const [types, setTypes] = useState(null)
   const [form, setForm] = useState(empty)
   const [errors, setErrors] = useState({})
@@ -66,7 +68,7 @@ export default function TicketTypes({ eventId }) {
     setErrors({})
     try {
       const updated = await api(`/ticket-types/${type.id}`, { method: 'PATCH', body: { hidden } })
-      setTypes(types.map((t) => (t.id === type.id ? updated : t)))
+      setTypes(types.map((item) => (item.id === type.id ? updated : item)))
     } catch (err) {
       setErrors({ form: err.message })
     } finally {
@@ -76,25 +78,27 @@ export default function TicketTypes({ eventId }) {
 
   return (
     <section className="mt-8" aria-labelledby="ticket-types-title">
-      <h3 id="ticket-types-title" className="text-xl font-semibold">Ticket types</h3>
-      {types === null && !errors.form && <p className="mt-2 text-gray-600">Loading…</p>}
+      <h3 id="ticket-types-title" className="text-xl font-semibold">{t('Ticket types')}</h3>
+      {types === null && !errors.form && <p className="mt-2 text-gray-600">{t('Loading…')}</p>}
       {types?.length === 0 && (
-        <p className="mt-2 text-gray-600">No ticket types yet. Attendees can buy tickets once you add one.</p>
+        <p className="mt-2 text-gray-600">{t('No ticket types yet. Attendees can buy tickets once you add one.')}</p>
       )}
       {types?.length > 0 && (
         <ul className="mt-3 divide-y rounded-xl border bg-white">
-          {types.map((t) => (
-            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
+          {types.map((type) => (
+            <li key={type.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
               <span>
-                <strong>{t.name}</strong>
-                {t.hidden && <span className="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs">Hidden</span>}
+                <strong>{type.name}</strong>
+                {type.hidden && <span className="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs">{t('Hidden')}</span>}
                 <span className="block text-sm text-gray-600">
-                  {formatMoney(t.price_minor)} · {t.available} of {t.quantity} left · max {t.max_per_order} per order
+                  {t(formatMoney(type.price_minor))}
+                  {' · '}
+                  {t('{left} of {quantity} left · max {max} per order', { left: type.available, quantity: type.quantity, max: type.max_per_order })}
                 </span>
               </span>
-              <button type="button" disabled={busy} onClick={() => setHidden(t, !t.hidden)}
+              <button type="button" disabled={busy} onClick={() => setHidden(type, !type.hidden)}
                 className="rounded border px-3 py-1 text-sm disabled:opacity-50">
-                {t.hidden ? 'Show' : 'Hide from sale'}
+                {type.hidden ? t('Show') : t('Hide from sale')}
               </button>
             </li>
           ))}
@@ -102,20 +106,20 @@ export default function TicketTypes({ eventId }) {
       )}
 
       <form onSubmit={add} className="mt-4 space-y-3 rounded-lg border border-brand-200 bg-brand-50 p-4" noValidate>
-        <p className="font-medium">Add a ticket type</p>
-        <Input label="Name" name="name" required maxLength={120} placeholder="Standard"
-          value={form.name} onChange={update} error={errors.name} />
+        <p className="font-medium">{t('Add a ticket type')}</p>
+        <Input label={t('Name::ticket')} name="name" required maxLength={120} placeholder={t('Standard')}
+          value={form.name} onChange={update} error={t(errors.name)} />
         <div className="grid grid-cols-3 gap-3">
-          <Input label="Price, ₸ (0 = free)" name="price" inputMode="decimal" required
-            value={form.price} onChange={update} error={errors.price} />
-          <Input label="Quantity" name="quantity" type="number" min="0" max="1000000" required
-            value={form.quantity} onChange={update} error={errors.quantity} />
-          <Input label="Max per order" name="max_per_order" type="number" min="1" max="100" required
-            value={form.max_per_order} onChange={update} error={errors.max_per_order} />
+          <Input label={t('Price, ₸ (0 = free)')} name="price" inputMode="decimal" required
+            value={form.price} onChange={update} error={t(errors.price)} />
+          <Input label={t('Quantity')} name="quantity" type="number" min="0" max="1000000" required
+            value={form.quantity} onChange={update} error={t(errors.quantity)} />
+          <Input label={t('Max per order')} name="max_per_order" type="number" min="1" max="100" required
+            value={form.max_per_order} onChange={update} error={t(errors.max_per_order)} />
         </div>
-        {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
+        {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
         <button disabled={busy} className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
-          Add ticket type
+          {t('Add ticket type')}
         </button>
       </form>
     </section>

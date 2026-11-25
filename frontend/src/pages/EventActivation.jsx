@@ -3,10 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import { api, fieldErrors } from '../api/client'
 import { formatAmount } from '../utils/money'
 import { STATUS_LABELS, STEP_LABELS, missingBeforeFee, payoutReferenceError } from '../utils/activation'
+import { useI18n } from '../i18n/i18n.js'
 
 // /organizer/events/:id/activation — paid-sales activation checklist (SRS 4.5, UC2).
 // Paid tickets of this event cannot be bought until every step is done.
 function EventActivation() {
+  const { t } = useI18n()
   const { id } = useParams()
   const [event, setEvent] = useState(null)
   const [state, setState] = useState(null)
@@ -52,12 +54,12 @@ function EventActivation() {
     submit({ payout_reference: payout.trim() }, 'Payout account connected.')
   }
 
-  if (error) return <p role="alert" className="text-red-600">{error}</p>
-  if (!state) return <p>Loading…</p>
+  if (error) return <p role="alert" className="text-red-600">{t(error)}</p>
+  if (!state) return <p>{t('Loading…')}</p>
   if (event.cancelled_at) return (
     <main>
-      <p>This event has been cancelled. Paid sales are closed.</p>
-      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-brand-700 underline">View sales and orders</Link>
+      <p>{t('This event has been cancelled. Paid sales are closed.')}</p>
+      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-brand-700 underline">{t('View sales and orders')}</Link>
     </main>
   )
 
@@ -67,18 +69,17 @@ function EventActivation() {
   return (
     <main className="max-w-2xl">
       <Link to={`/organizer/events/${id}`} className="text-sm text-gray-500">← {event.title}</Link>
-      <h1 className="mt-2 text-3xl font-bold">Paid sales activation</h1>
+      <h1 className="mt-2 text-3xl font-bold">{t('Paid sales activation')}</h1>
       <p className="mt-1 text-gray-600">
-        Status: <strong>{STATUS_LABELS[state.status]}</strong>. Activation applies to this event only.
+        {t('Status')}: <strong>{t(STATUS_LABELS[state.status])}</strong>. {t('Activation applies to this event only.')}
       </p>
       <p className="mt-2 rounded border border-amber-300 bg-amber-50 p-3 text-sm">
-        Demo environment: identity, payout account and the {formatAmount(state.fee_minor)} activation
-        fee are simulated. No real data is checked and no money is charged.
+        {t('Demo environment: identity, payout account and the {fee} activation fee are simulated. No real data is checked and no money is charged.', { fee: formatAmount(state.fee_minor) })}
       </p>
       {state.status === 'suspended' && (
         <p role="alert" className="mt-3 rounded border border-red-300 bg-red-50 p-3 text-sm">
-          A platform admin suspended paid sales for this event{state.suspension_reason ? `: ${state.suspension_reason}` : '.'}{' '}
-          Free tickets and already issued tickets keep working.
+          {t('A platform admin suspended paid sales for this event')}{state.suspension_reason ? `: ${state.suspension_reason}` : '.'}{' '}
+          {t('Free tickets and already issued tickets keep working.')}
         </p>
       )}
 
@@ -88,34 +89,34 @@ function EventActivation() {
             <span aria-hidden className={item.done ? 'text-green-600' : 'text-gray-400'}>{item.done ? '✓' : '○'}</span>
             <div className="flex-1">
               <p className={item.done ? 'font-medium' : ''}>
-                {STEP_LABELS[item.step]}
-                <span className="sr-only">{item.done ? ' — done' : ' — not done'}</span>
+                {t(STEP_LABELS[item.step])}
+                <span className="sr-only">{' — '}{item.done ? t('done') : t('not done')}</span>
               </p>
               {item.step === 'paid_ticket_type' && !item.done && (
-                <Link to={`/organizer/events/${id}/edit`} className="text-sm text-brand-700 underline">Add a paid ticket type</Link>
+                <Link to={`/organizer/events/${id}/edit`} className="text-sm text-brand-700 underline">{t('Add a paid ticket type')}</Link>
               )}
               {item.step === 'identity_verified' && !item.done && (
                 <button disabled={busy} onClick={() => submit({ identity_confirmed: true }, 'Identity verified.')}
                   className="mt-2 rounded bg-brand-600 hover:bg-brand-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-                  Run simulated verification
+                  {t('Run simulated verification')}
                 </button>
               )}
               {item.step === 'payout_account' && (
                 <form onSubmit={connectPayout} className="mt-2 flex flex-wrap gap-2">
-                  <label className="sr-only" htmlFor="payout">Simulated payout reference</label>
+                  <label className="sr-only" htmlFor="payout">{t('Simulated payout reference')}</label>
                   <input id="payout" value={payout} onChange={(e) => setPayout(e.target.value)} maxLength={64}
                     placeholder="SIM-PAYOUT-1" className="rounded border px-3 py-1.5 text-sm"
                     aria-invalid={Boolean(errors.payout)} aria-describedby={errors.payout ? 'payout-error' : undefined} />
                   <button disabled={busy} className="rounded bg-brand-600 hover:bg-brand-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-                    {item.done ? 'Update' : 'Connect'}
+                    {item.done ? t('Update') : t('Connect')}
                   </button>
-                  {errors.payout && <p id="payout-error" className="w-full text-sm text-red-600">{errors.payout}</p>}
+                  {errors.payout && <p id="payout-error" className="w-full text-sm text-red-600">{t(errors.payout)}</p>}
                 </form>
               )}
               {item.step === 'terms_accepted' && !item.done && (
                 <button disabled={busy} onClick={() => submit({ accept_terms: true }, 'Terms accepted.')}
                   className="mt-2 rounded bg-brand-600 hover:bg-brand-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-                  Accept paid-event terms
+                  {t('Accept paid-event terms')}
                 </button>
               )}
               {item.step === 'fee_paid' && !done.fee_paid && (
@@ -123,20 +124,20 @@ function EventActivation() {
                   <button disabled={busy || missing.length > 0}
                     onClick={() => submit({ pay_fee: 'success' }, 'Activation fee paid. Paid tickets are on sale.')}
                     className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-                    Pay {formatAmount(state.fee_minor)} (simulated)
+                    {t('Pay {amount} (simulated)', { amount: formatAmount(state.fee_minor) })}
                   </button>
-                  {missing.length > 0 && <p className="mt-1 text-sm text-gray-600">Complete the steps above first.</p>}
+                  {missing.length > 0 && <p className="mt-1 text-sm text-gray-600">{t('Complete the steps above first.')}</p>}
                 </div>
               )}
               {item.step === 'fee_paid' && done.fee_paid && state.fee_reference && (
-                <p className="text-xs text-gray-500">Simulation reference {state.fee_reference}</p>
+                <p className="text-xs text-gray-500">{t('Simulation reference {reference}', { reference: state.fee_reference })}</p>
               )}
             </div>
           </li>
         ))}
       </ol>
-      {notice && <p role="status" className="mt-4 text-green-700">{notice}</p>}
-      {errors.form && <p role="alert" className="mt-4 text-red-600">{errors.form}</p>}
+      {notice && <p role="status" className="mt-4 text-green-700">{t(notice)}</p>}
+      {errors.form && <p role="alert" className="mt-4 text-red-600">{t(errors.form)}</p>}
     </main>
   )
 }

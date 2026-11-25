@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { api, fieldErrors } from '../api/client'
 import { useAuth } from '../auth/auth'
 import { PERMISSIONS, normalizeEmail, permissionLabels, validateStaffForm } from '../utils/staff'
+import { useI18n } from '../i18n/i18n.js'
 
 const EMPTY = { email: '', can_check_in: true, can_manage_support: false }
 
@@ -10,6 +11,7 @@ const EMPTY = { email: '', can_check_in: true, can_manage_support: false }
 // (GET/POST /events/{id}/staff, DELETE /events/{id}/staff/{user_id}).
 // They sign in to the mobile scanner and/or handle this event's support cases.
 function EventStaff() {
+  const { t } = useI18n()
   const { id } = useParams()
   const { user } = useAuth()
   const [event, setEvent] = useState(null)
@@ -18,7 +20,7 @@ function EventStaff() {
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState(null)
+  const [notice, setNotice] = useState(null) // { text, values }
 
   useEffect(() => {
     let active = true
@@ -47,7 +49,7 @@ function EventStaff() {
       })
       setStaff((list) => [...list, created])
       setForm(EMPTY)
-      setNotice(`${created.user_email} is now an Event Admin.`)
+      setNotice({ text: '{email} is now an Event Admin.', values: { email: created.user_email } })
     } catch (err) {
       const errs = fieldErrors(err)
       setErrors({
@@ -63,14 +65,14 @@ function EventStaff() {
 
   async function remove(assignment) {
     if (busy) return
-    if (!window.confirm(`Remove ${assignment.user_email} as Event Admin? They lose check-in and support access.`)) return
+    if (!window.confirm(t('Remove {email} as Event Admin? They lose check-in and support access.', { email: assignment.user_email }))) return
     setBusy(true)
     setNotice(null)
     setErrors({})
     try {
       await api(`/events/${id}/staff/${assignment.user}`, { method: 'DELETE' })
       setStaff((list) => list.filter((a) => a.id !== assignment.id))
-      setNotice(`${assignment.user_email} was removed.`)
+      setNotice({ text: '{email} was removed.', values: { email: assignment.user_email } })
     } catch (err) {
       if (err.status === 404) setStaff((list) => list.filter((a) => a.id !== assignment.id))
       else setErrors({ form: err.message })
@@ -79,31 +81,30 @@ function EventStaff() {
     }
   }
 
-  if (error) return <p role="alert" className="text-red-600">{error}</p>
-  if (!staff) return <p>Loading…</p>
+  if (error) return <p role="alert" className="text-red-600">{t(error)}</p>
+  if (!staff) return <p>{t('Loading…')}</p>
 
   return (
     <main className="max-w-3xl">
       <Link to={`/organizer/events/${id}`} className="text-sm text-gray-500">← {event.title}</Link>
-      <h1 className="mt-2 text-3xl font-bold">Event Admins</h1>
+      <h1 className="mt-2 text-3xl font-bold">{t('Event Admins')}</h1>
       <p className="mt-2 text-gray-600">
-        Event Admins help with this event only. With check-in they can sign in to the BiletFlow
-        scanner app; with support they can answer and assign this event&apos;s support cases.
+        {t("Event Admins help with this event only. With check-in they can sign in to the BiletFlow scanner app; with support they can answer and assign this event's support cases.")}
       </p>
 
       {staff.length === 0 ? (
-        <p className="mt-6 text-gray-600">No Event Admins yet.</p>
+        <p className="mt-6 text-gray-600">{t('No Event Admins yet.')}</p>
       ) : (
         <ul className="mt-6 divide-y rounded-xl border bg-white">
           {staff.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <span className="min-w-0">
                 <strong className="break-all">{a.user_email}</strong>
-                <span className="block text-sm text-gray-600">{permissionLabels(a).join(' · ') || 'No permissions'}</span>
+                <span className="block text-sm text-gray-600">{permissionLabels(a).map((label) => t(label)).join(' · ') || t('No permissions')}</span>
               </span>
               <button type="button" onClick={() => remove(a)} disabled={busy}
                 className="text-sm text-red-700 underline disabled:opacity-50">
-                Remove
+                {t('Remove')}
               </button>
             </li>
           ))}
@@ -111,31 +112,31 @@ function EventStaff() {
       )}
 
       <form onSubmit={add} noValidate className="mt-8 space-y-4 rounded-xl border bg-white p-6">
-        <h2 className="text-xl font-semibold">Add an Event Admin</h2>
+        <h2 className="text-xl font-semibold">{t('Add an Event Admin')}</h2>
         <label className="block">
-          <span className="text-sm">Email of their BiletFlow account</span>
+          <span className="text-sm">{t('Email of their BiletFlow account')}</span>
           <input type="email" value={form.email} autoComplete="off" maxLength={254}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             aria-invalid={Boolean(errors.email)} className="mt-1 w-full rounded border px-3 py-2" />
-          {errors.email && <span className="mt-1 block text-sm text-red-600">{errors.email}</span>}
+          {errors.email && <span className="mt-1 block text-sm text-red-600">{t(errors.email)}</span>}
         </label>
         <fieldset>
-          <legend className="text-sm">Permissions</legend>
+          <legend className="text-sm">{t('Permissions')}</legend>
           {Object.entries(PERMISSIONS).map(([key, label]) => (
             <label key={key} className="mt-2 flex items-center gap-2">
               <input type="checkbox" checked={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} />
-              {label}
+              {t(label)}
             </label>
           ))}
-          {errors.permissions && <span className="mt-1 block text-sm text-red-600">{errors.permissions}</span>}
+          {errors.permissions && <span className="mt-1 block text-sm text-red-600">{t(errors.permissions)}</span>}
         </fieldset>
-        <p className="text-xs text-gray-500">To change permissions, remove the person and add them again.</p>
-        {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
+        <p className="text-xs text-gray-500">{t('To change permissions, remove the person and add them again.')}</p>
+        {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
         <button disabled={busy} className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
-          {busy ? 'Saving…' : 'Add Event Admin'}
+          {busy ? t('Saving…') : t('Add Event Admin')}
         </button>
       </form>
-      {notice && <p role="status" className="mt-4 text-sm text-green-700">{notice}</p>}
+      {notice && <p role="status" className="mt-4 text-sm text-green-700">{t(notice.text, notice.values)}</p>}
     </main>
   )
 }
