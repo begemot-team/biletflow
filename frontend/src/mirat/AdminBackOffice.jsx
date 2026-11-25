@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   adminReportPath,
+  buildCsv,
   downloadBlob,
+  downloadCsv,
+  eventReportUpdate,
   formatMoney,
   listAll,
+  loadPromoActivity,
   orderStatus,
   paymentStatus,
   reportReason,
@@ -27,7 +31,7 @@ function useRows(api, kind, initial = {}) {
   }, [api, path])
   useEffect(() => {
     let active = true
-    listAll(api, path).then(value => { if (active) setResult({ path, rows: value }) }).catch(failure => { if (active) setError(failure.message) })
+    listAll(api, path).then(value => { if (active) { setResult({ path, rows: value }); setError('') } }).catch(failure => { if (active) setError(failure.message) })
     return () => { active = false }
   }, [api, path])
   function apply(event) { event.preventDefault(); setApplied({ ...filters }) }
@@ -79,8 +83,13 @@ export function EventReportsPanel({ api }) {
   async function review(row, status) {
     setBusy(row.id); state.setError('')
     try {
-      await api(`/admin/event-reports/${row.id}`, { method: 'PATCH', body: { status, resolution_note: (notes[row.id] || '').trim() } })
+      await api(`/admin/event-reports/${row.id}`, { method: 'PATCH', body: eventReportUpdate(row, status, notes) })
       await state.load()
+      setNotes(current => {
+        const next = { ...current }
+        delete next[row.id]
+        return next
+      })
     } catch (failure) { state.setError(failure.message) } finally { setBusy(null) }
   }
   return <section className="mw-panel"><h2>Жалобы на события</h2><p>Официальные жалобы посетителей. После проверки событие можно отдельно приостановить в разделе «События».</p><Filters state={state} statuses={Object.entries({ open: 'Открыта', reviewed: 'Проверена', dismissed: 'Отклонена' })} /><Result state={state} empty="Жалобы не найдены.">{rows => <div className="mw-admin-cards">{rows.map(row => <article className="mw-admin-card" key={row.id}><div><h3>#{row.id} · {row.event_title}</h3><p><strong>{reportReason(row.reason)}</strong> · {row.reporter_email}</p><p>{row.details || 'Дополнительного описания нет.'}</p><span className={`mw-badge ${row.status === 'reviewed' ? 'is-active' : row.status === 'open' ? 'is-suspended' : ''}`}>{reportStatus(row.status)}</span>{row.event_suspended && <small className="mw-block">Событие приостановлено</small>}</div><div><label>Результат проверки<input value={notes[row.id] ?? row.resolution_note ?? ''} maxLength="300" onChange={event => setNotes(current => ({ ...current, [row.id]: event.target.value }))} placeholder="Необязательная заметка" /></label><div className="mw-actions"><button disabled={busy === row.id} onClick={() => review(row, 'reviewed')}>Проверено</button><button disabled={busy === row.id} className="mw-danger" onClick={() => review(row, 'dismissed')}>Отклонить</button>{row.status !== 'open' && <button disabled={busy === row.id} className="mw-secondary" onClick={() => review(row, 'open')}>Открыть снова</button>}</div></div></article>)}</div>}</Result></section>
@@ -130,5 +139,40 @@ export function ServerExportsPanel({ api }) {
       downloadBlob(`biletflow-${kind}-${new Date().toISOString().slice(0, 10)}.csv`, blob)
     } catch (failure) { setError(failure.message) } finally { setBusy('') }
   }
-  return <section className="mw-panel"><h2>Экспорт операционных отчётов</h2><p>Сервер формирует полные UTF-8 CSV-файлы. Они открываются в Excel и содержат актуальные данные на момент скачивания.</p>{error && <p className="mw-notice" role="alert">{error}</p>}<div className="mw-export-grid">{exportKinds.map(([kind, label]) => <button disabled={Boolean(busy)} key={kind} onClick={() => download(kind)}>{busy === kind ? 'Готовим…' : `${label} (.csv)`}</button>)}</div></section>
+  async function downloadClient(kind) {
+    setBusy(kind); setError('')
+    try {
+      let columns
+      let rows
+      if (kind === 'events') {
+        rows = await listAll(api, '/me/events')
+        columns = [
+          { label: 'ID', value: row => row.id }, { label: 'Событие', value: row => row.title },
+          { label: 'Место', value: row => row.venue }, { label: 'Начало', value: row => row.starts_at },
+          { label: 'Опубликовано', value: row => row.published }, { label: 'Отменено', value: row => Boolean(row.cancelled_at) },
+          { label: 'Приостановлено', value: row => Boolean(row.suspended_at) }, { label: 'Причина', value: row => row.suspension_reason },
+        ]
+      } else if (kind === 'support') {
+        rows = await listAll(api, '/support-cases')
+        columns = [
+          { label: 'ID', value: row => row.id }, { label: 'Тип', value: row => row.kind },
+          { label: 'Категория', value: row => row.category }, { label: 'Тема', value: row => row.subject },
+          { label: 'Статус', value: row => row.status }, { label: 'Пользователь', value: row => row.requester_email },
+          { label: 'Событие', value: row => row.event }, { label: 'Обновлено', value: row => row.updated_at },
+        ]
+      } else {
+        const events = await listAll(api, '/me/events')
+        rows = await loadPromoActivity(api, events)
+        columns = [
+          { label: 'ID', value: row => row.id }, { label: 'Кампания', value: row => row.name },
+          { label: 'Событие', value: row => row.event_title }, { label: 'Промокоды', value: row => row.codes.map(code => code.code).join(' ') },
+          { label: 'Применения', value: row => row.report.redemptions }, { label: 'Билеты', value: row => row.report.tickets_sold },
+          { label: 'Скидка, тиын', value: row => row.report.discount_minor }, { label: 'Возвраты, тиын', value: row => row.report.refund_minor },
+          { label: 'Итого, тиын', value: row => row.report.net_minor },
+        ]
+      }
+      downloadCsv(`biletflow-${kind}-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(columns, rows))
+    } catch (failure) { setError(failure.message) } finally { setBusy('') }
+  }
+  return <section className="mw-panel"><h2>Экспорт операционных отчётов</h2><p>Сервер формирует полные UTF-8 CSV-файлы. Они открываются в Excel и содержат актуальные данные на момент скачивания.</p>{error && <p className="mw-notice" role="alert">{error}</p>}<h3>Back-office отчёты</h3><div className="mw-export-grid">{exportKinds.map(([kind, label]) => <button disabled={Boolean(busy)} key={kind} onClick={() => download(kind)}>{busy === kind ? 'Готовим…' : `${label} (.csv)`}</button>)}</div><h3>События, обращения и промокоды</h3><p>Отчёт промокодов сохраняет денежные значения в тиынах без округления.</p><div className="mw-export-grid">{[['events', 'События'], ['support', 'Все обращения'], ['promos', 'Промокоды']].map(([kind, label]) => <button disabled={Boolean(busy)} key={kind} onClick={() => downloadClient(kind)}>{busy === kind ? 'Готовим…' : `${label} (.csv)`}</button>)}</div></section>
 }

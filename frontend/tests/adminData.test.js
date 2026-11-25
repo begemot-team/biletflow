@@ -4,6 +4,7 @@ import {
   activationStatus,
   adminReportPath,
   buildCsv,
+  eventReportUpdate,
   listAll,
   loadPromoActivity,
   orderStatus,
@@ -68,4 +69,17 @@ test('back-office values have readable Russian labels', () => {
   assert.equal(paymentStatus('refunded'), 'Возвращён')
   assert.equal(reportStatus('dismissed'), 'Отклонена')
   assert.equal(reportReason('safety'), 'Безопасность')
+})
+
+test('event report review preserves an untouched note and allows an explicit clear', () => {
+  const row = { id: 42, resolution_note: 'Проверено ранее' }
+  assert.deepEqual(eventReportUpdate(row, 'open', {}), { status: 'open' })
+  assert.deepEqual(eventReportUpdate(row, 'reviewed', { 42: '  Новая заметка  ' }), {
+    status: 'reviewed',
+    resolution_note: 'Новая заметка',
+  })
+  assert.deepEqual(eventReportUpdate(row, 'dismissed', { 42: '' }), {
+    status: 'dismissed',
+    resolution_note: '',
+  })
 })

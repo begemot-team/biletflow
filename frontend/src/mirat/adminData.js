@@ -58,6 +58,14 @@ export function adminReportPath(kind, filters = {}) {
   return `/admin/${kind}${suffix ? `?${suffix}` : ''}`
 }
 
+export function eventReportUpdate(row, status, notes) {
+  const body = { status }
+  if (Object.prototype.hasOwnProperty.call(notes, row.id)) {
+    body.resolution_note = notes[row.id].trim()
+  }
+  return body
+}
+
 export const orderStatus = status => ({
   pending: 'Ожидает оплаты',
   confirmed: 'Подтверждён',

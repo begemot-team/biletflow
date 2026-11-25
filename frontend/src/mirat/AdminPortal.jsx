@@ -52,7 +52,7 @@ function useAdminList(path) {
   }, [path])
   useEffect(() => {
     let active = true
-    listAll(auth.api, path).then(value => { if (active) setItems(value) }).catch(failure => { if (active) setError(failure.message) })
+    listAll(auth.api, path).then(value => { if (active) { setItems(value); setError('') } }).catch(failure => { if (active) setError(failure.message) })
     return () => { active = false }
   }, [path])
   return { items, setItems, error, setError, load }
@@ -72,10 +72,10 @@ function Overview({ select }) {
     ['events', 'События', 'Поиск и модерация событий'],
     ['orders', 'Заказы', 'Поиск по всей платформе', 'orders'],
     ['payments', 'Платежи', 'Симулированные оплаты и комиссии', 'payments'],
-    ['monitoring', 'Финансовый мониторинг', 'Ошибки, возвраты и споры', 'payment_failures'],
+    ['monitoring', 'Финансовый мониторинг', 'Ошибки, возвраты и споры', [['payment_failures', 'ошибок'], ['refunds', 'возвратов'], ['open_disputes', 'споров']]],
     ['reports', 'Жалобы', 'Проверка жалоб на события', 'open_event_reports'],
     ['complaints', 'Обращения', 'Поддержка посетителей по событиям'],
-    ['support', 'Эскалации', 'Обращения организаторов к платформе', 'open_disputes'],
+    ['support', 'Эскалации', 'Обращения организаторов к платформе'],
     ['promos', 'Промокоды', 'Использования, скидки и возвраты'],
     ['settings', 'Настройки', 'Сумма активации и комиссия'],
     ['exports', 'Отчёты', 'CSV для операционной проверки'],
@@ -83,7 +83,7 @@ function Overview({ select }) {
   return <>
     <section className="mw-panel"><p className="mw-eyebrow">PHASE 06 · OPERATIONS</p><h2>Управление платформой</h2><p>Проверяйте пользователей, события, платные продажи, обращения и промокампании. Все данные ниже загружаются из BiletFlow API.</p></section>
     {error && <p className="mw-notice" role="alert">Сводка временно недоступна: {error}</p>}
-    <div className="mw-stats mw-admin-stats">{cards.map(([key, title, detail, metric]) => <button key={key} className="mw-panel mw-dashboard-link" onClick={() => select(key)}><strong>{title}</strong>{metric && summary && <span className="mw-summary-count">{summary[metric]}</span>}<small>{detail}</small></button>)}</div>
+    <div className="mw-stats mw-admin-stats">{cards.map(([key, title, detail, metric]) => <button key={key} className="mw-panel mw-dashboard-link" onClick={() => select(key)}><strong>{title}</strong>{metric && summary && <span className="mw-summary-count">{Array.isArray(metric) ? metric.map(([name, label]) => `${summary[name]} ${label}`).join(' · ') : summary[metric]}</span>}<small>{detail}</small></button>)}</div>
   </>
 }
 
