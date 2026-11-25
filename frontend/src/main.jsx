@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import AuthProvider from './auth/AuthProvider.jsx'
+import LanguageProvider from './i18n/LanguageProvider.jsx'
 import CampaignPortal from './mirat/CampaignPortal.jsx'
 import AdminPortal from './mirat/AdminPortal.jsx'
 import MiratWorkspace from './mirat/MiratWorkspace.jsx'
@@ -18,9 +19,11 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     {isCampaign ? <CampaignPortal /> : isAdmin ? <AdminPortal /> : isWorkspace ? <MiratWorkspace path={path} /> : (
       <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </LanguageProvider>
       </BrowserRouter>
     )}
   </StrictMode>,
