@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -19,6 +19,7 @@ interface ScanScreenProps {
 
 export default function ScanScreen({ eventId, authToken, onBack, onScanSuccess }: ScanScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
+  const lastCameraCode = useRef('');
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannedTicket, setScannedTicket] = useState<Ticket | null>(null);
@@ -89,7 +90,8 @@ export default function ScanScreen({ eventId, authToken, onBack, onScanSuccess }
             style={styles.camera}
             barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
             onBarcodeScanned={({ data }) => {
-              if (data && data !== qrInput) {
+              if (data && data !== lastCameraCode.current) {
+                lastCameraCode.current = data;
                 setQrInput(data);
                 processQrCode(data);
               }

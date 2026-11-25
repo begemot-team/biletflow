@@ -165,7 +165,9 @@ export default function App() {
 
   const handleScanSuccess = (code: string) => {
     setLastScannedCode(code);
-    showAlert('QR Code Scanned', `Payload: ${code}\nEvent: ${selectedEvent?.title}`);
+    if (Platform.OS !== 'web') {
+      showAlert('QR Code Scanned', `Payload: ${code}\nEvent: ${selectedEvent?.title}`);
+    }
   };
 
   if (currentScreen === 'SCAN' && selectedEvent) {
