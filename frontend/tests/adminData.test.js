@@ -1,6 +1,17 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { activationStatus, buildCsv, listAll, loadPromoActivity, supportStatus } from '../src/mirat/adminData.js'
+import {
+  activationStatus,
+  adminReportPath,
+  buildCsv,
+  listAll,
+  loadPromoActivity,
+  orderStatus,
+  paymentStatus,
+  reportReason,
+  reportStatus,
+  supportStatus,
+} from '../src/mirat/adminData.js'
 
 test('admin lists every paginated result without losing the original query', async () => {
   const calls = []
@@ -43,4 +54,18 @@ test('admin statuses have readable Russian labels', () => {
   assert.equal(activationStatus('active'), 'Активно')
   assert.equal(supportStatus('waiting_for_customer'), 'Ожидает пользователя')
   assert.equal(supportStatus('custom'), 'custom')
+})
+
+test('admin report path keeps only non-empty filters and encodes search', () => {
+  assert.equal(
+    adminReportPath('orders', { q: 'Jazz & Mirat', status: '', event: 12, date_from: null }),
+    '/admin/orders?q=Jazz+%26+Mirat&event=12',
+  )
+})
+
+test('back-office values have readable Russian labels', () => {
+  assert.equal(orderStatus('confirmed'), 'Подтверждён')
+  assert.equal(paymentStatus('refunded'), 'Возвращён')
+  assert.equal(reportStatus('dismissed'), 'Отклонена')
+  assert.equal(reportReason('safety'), 'Безопасность')
 })

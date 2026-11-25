@@ -34,6 +34,10 @@ export function buildCsv(columns, rows) {
 
 export function downloadCsv(filename, contents) {
   const blob = new Blob([contents], { type: 'text/csv;charset=utf-8' })
+  downloadBlob(filename, blob)
+}
+
+export function downloadBlob(filename, blob) {
   const href = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = href
@@ -43,6 +47,35 @@ export function downloadCsv(filename, contents) {
   link.remove()
   setTimeout(() => URL.revokeObjectURL(href), 0)
 }
+
+export function adminReportPath(kind, filters = {}) {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) {
+    const text = String(value ?? '').trim()
+    if (text) query.set(key, text)
+  }
+  const suffix = query.toString()
+  return `/admin/${kind}${suffix ? `?${suffix}` : ''}`
+}
+
+export const orderStatus = status => ({
+  pending: 'Ожидает оплаты',
+  confirmed: 'Подтверждён',
+  cancelled: 'Отменён',
+  refunded: 'Возвращён',
+}[status] || status)
+
+export const paymentStatus = status => ({ paid: 'Оплачен', refunded: 'Возвращён' }[status] || status)
+
+export const reportStatus = status => ({ open: 'Открыта', reviewed: 'Проверена', dismissed: 'Отклонена' }[status] || status)
+
+export const reportReason = reason => ({
+  fraud: 'Мошенничество',
+  misleading: 'Вводит в заблуждение',
+  inappropriate: 'Недопустимое содержание',
+  safety: 'Безопасность',
+  other: 'Другое',
+}[reason] || reason)
 
 export const formatMoney = (minor, currency = 'KZT') => new Intl.NumberFormat('ru-KZ', {
   style: 'currency',

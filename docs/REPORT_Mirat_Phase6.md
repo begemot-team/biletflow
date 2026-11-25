@@ -1,7 +1,8 @@
 # Mirat — Phase 6: platform operations and stabilization
 
 Implementation date: November 25, 2026.
-Branch: `feature/mirat-phase6`, based on the updated `dev` branch.
+Branches: `feature/mirat-phase6` and follow-up
+`feature/mirat-phase6-admin-integration`, both based on the updated `dev` branch.
 
 ## Contribution this period
 
@@ -25,10 +26,22 @@ Branch: `feature/mirat-phase6`, based on the updated `dev` branch.
   uses the stable `event-{id}@biletflow` UID, `METHOD:CANCEL` and `STATUS:CANCELLED`,
   so an attendee's earlier calendar entry can be updated without calendar-account
   write access.
+- Completed the follow-up integration after the Platform Admin back-office API was
+  merged into `dev`: searchable platform-wide order and payment tables now support
+  status, event and date filters.
+- Added financial monitoring views for failed checkout/activation payments, refunds
+  and payment/refund support disputes.
+- Added the dedicated event-report review queue. Administrators can record a review,
+  dismiss a report or reopen it while retaining the backend audit metadata.
+- Added editable Platform Settings for the activation fee and processing-fee rate,
+  including explicit controls to restore deployment defaults.
+- Replaced the provisional client-only export notice with authenticated server CSV
+  downloads for orders, payments, payment failures, refunds, disputes, activations
+  and event reports.
 
 ## Verification
 
-- `npm test`: 62 frontend tests passed.
+- `npm test`: 64 frontend tests passed.
 - `npm run lint`: passed.
 - `npm run build`: production build passed.
 - Python `ruff` checks and source compilation: passed.
@@ -39,18 +52,10 @@ Branch: `feature/mirat-phase6`, based on the updated `dev` branch.
   cannot run on SQLite. They remain for the PostgreSQL GitHub Actions run; the local
   Docker.app installation could not start because its executable is missing.
 
-## Remaining backend dependency
+## Known optional limitations
 
-The current data model has successful payments and refunds, but has no Platform Admin
-list/search endpoints for orders or payments and does not retain payment-failure or
-dispute records. It also exposes activation fees from deployment configuration as
-read-only state. Therefore the UI does not invent these records or pretend to save a
-platform setting.
-
-To finish the remaining SRS 4.12 items, backend work is still required for:
-
-- administrator order/payment search;
-- retained payment-attempt and dispute records plus monitoring endpoints;
-- a validated, audited platform-settings endpoint for future activation fees.
+- GA4 integration was listed as a bonus and is not part of this MVP delivery.
+- Full Kazakh/Russian/English localization remains the team's documented SRS 13.4
+  limitation; the Platform Admin operational screens currently use Russian labels.
 
 No password, token, API key or production secret is included in this branch.
