@@ -29,7 +29,7 @@ import { useI18n } from "./i18n/i18n.js";
 
 function App() {
   const { t } = useI18n();
-  const { user, isOrganizer, logout } = useAuth();
+  const { user, isOrganizer, isPlatformAdmin, logout } = useAuth();
   const location = useLocation();
   // Login/Register are modals: keep Home rendered underneath them
   const isAuthModal = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"].includes(location.pathname);
@@ -55,6 +55,13 @@ function App() {
               <Link to="/organizer" className="text-gray-600 hover:text-brand-700">
                 {t("Dashboard")}
               </Link>
+            )}
+
+            {isPlatformAdmin && (
+              // /admin is a separate app (see main.jsx), so a full page load, not a router Link.
+              <a href="/admin" className="text-gray-600 hover:text-brand-700">
+                {t("Admin panel")}
+              </a>
             )}
 
             {user ? (
