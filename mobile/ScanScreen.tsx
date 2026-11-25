@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { verifyTicket, checkInTicket, Ticket } from './services/ticketService';
@@ -20,6 +19,7 @@ interface ScanScreenProps {
 
 export default function ScanScreen({ eventId, authToken, onBack, onScanSuccess }: ScanScreenProps) {
   const [permission, requestPermission] = useCameraPermissions();
+  const lastCameraCode = useRef('');
   const [qrInput, setQrInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannedTicket, setScannedTicket] = useState<Ticket | null>(null);
@@ -84,13 +84,14 @@ export default function ScanScreen({ eventId, authToken, onBack, onScanSuccess }
 
       <Text style={styles.title}>Scan Ticket QR</Text>
 
-      {/* Camera View for native mobile devices */}
-      {Platform.OS !== 'web' && permission?.granted ? (
+      {permission?.granted ? (
         <View style={styles.cameraContainer}>
           <CameraView
             style={styles.camera}
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
             onBarcodeScanned={({ data }) => {
-              if (data && data !== qrInput) {
+              if (data && data !== lastCameraCode.current) {
+                lastCameraCode.current = data;
                 setQrInput(data);
                 processQrCode(data);
               }
@@ -98,17 +99,11 @@ export default function ScanScreen({ eventId, authToken, onBack, onScanSuccess }
           />
         </View>
       ) : (
-        <View style={styles.webFallbackContainer}>
-          <Text style={styles.webFallbackText}>
-            {Platform.OS === 'web'
-              ? '📷 Camera active on mobile device'
-              : 'Permission needed for camera'}
-          </Text>
-          {!permission?.granted && Platform.OS !== 'web' && (
-            <TouchableOpacity style={styles.permButton} onPress={requestPermission}>
-              <Text style={styles.permButtonText}>Grant Camera Permission</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.cameraPermissionContainer}>
+          <Text style={styles.cameraPermissionText}>Permission needed for camera</Text>
+          <TouchableOpacity style={styles.permButton} onPress={requestPermission}>
+            <Text style={styles.permButtonText}>Grant Camera Permission</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -163,7 +158,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20, marginTop: 40 },
   cameraContainer: { height: 220, borderRadius: 12, overflow: 'hidden', marginBottom: 20 },
   camera: { flex: 1 },
-  webFallbackContainer: {
+  cameraPermissionContainer: {
     height: 120,
     backgroundColor: '#f0f0f0',
     borderRadius: 12,
@@ -172,7 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     padding: 10,
   },
-  webFallbackText: { color: '#666', fontSize: 14, textAlign: 'center' },
+  cameraPermissionText: { color: '#666', fontSize: 14, textAlign: 'center' },
   permButton: { marginTop: 10, backgroundColor: '#007AFF', padding: 8, borderRadius: 6 },
   permButtonText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   inputContainer: { marginBottom: 10 },

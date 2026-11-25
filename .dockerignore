@@ -3,6 +3,8 @@
 **/__pycache__
 **/staticfiles
 frontend/dist
-mobile
+mobile/.expo
+mobile/.env*
+mobile/dist
 tmp
 .git
