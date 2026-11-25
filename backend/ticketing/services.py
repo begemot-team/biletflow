@@ -66,6 +66,10 @@ def reserve(user, event_id, items):
     now = timezone.now()
     if event.starts_at <= now:
         raise Conflict("Sales have ended.")
+    if event.registration_opens_at and event.registration_opens_at > now:
+        raise Conflict("Registration has not opened yet.")
+    if event.registration_closes_at and event.registration_closes_at <= now:
+        raise Conflict("Registration is closed.")
     if reserved(event.pk) + sum(item["quantity"] for item in items) > event.capacity:
         raise Conflict("Event capacity exceeded.")
     selected = []
@@ -160,6 +164,8 @@ def checkout(user, order_id, outcome, promo_code=None, attendees=None):
     holders = ticket_holders(user, items, attendees or [])
     if outcome == "failure":
         record_audit(event, user, "payment.failed", order, "Simulated payment failed.")
+        # SRS 4.10: tell the attendee, so a failed payment is not mistaken for a ticket.
+        transaction.on_commit(lambda: notifications.send_payment_failed(order.pk), robust=True)
         return order
     # Totals are always recomputed from purchase-time item prices; a client never
     # supplies a discount. The event is already locked above, so redemption counting
@@ -481,6 +487,24 @@ def live_redemptions(campaign):
 
 def invalidate_tickets(order, status):
     return Ticket.objects.filter(order_item__order=order).update(status=status)
+
+
+# Changes to these reach ticket holders by email (SRS 4.10 "event updates").
+ATTENDEE_FACING_FIELDS = ("title", "venue", "starts_at", "ends_at")
+
+
+def notify_event_updated(event, changes):
+    recipients = list(
+        event.orders.filter(status="confirmed")
+        .order_by()
+        .values_list("purchaser__email", flat=True)
+        .distinct()
+    )
+    if recipients:
+        fields = sorted(changes)
+        transaction.on_commit(
+            lambda: notifications.send_event_updated(event.pk, fields, recipients), robust=True
+        )
 
 
 @transaction.atomic

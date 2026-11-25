@@ -15,6 +15,11 @@ class Event(models.Model):
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
     capacity = models.PositiveIntegerField()
+    # Event-level registration window (SRS 4.2). Both optional: without them
+    # registration is open from publication until the event starts. Each ticket
+    # type can still narrow this with its own sales_start/sales_end.
+    registration_opens_at = models.DateTimeField(null=True, blank=True)
+    registration_closes_at = models.DateTimeField(null=True, blank=True)
     visibility = models.CharField(
         max_length=10,
         choices=[(v, v) for v in ("public", "unlisted", "private")],
@@ -36,6 +41,12 @@ class Event(models.Model):
             models.CheckConstraint(condition=Q(capacity__gt=0), name="event_capacity_positive"),
             models.CheckConstraint(
                 condition=Q(ends_at__gt=F("starts_at")), name="event_dates_valid"
+            ),
+            models.CheckConstraint(
+                condition=Q(registration_opens_at__isnull=True)
+                | Q(registration_closes_at__isnull=True)
+                | Q(registration_closes_at__gt=F("registration_opens_at")),
+                name="event_registration_window_valid",
             ),
         ]
 
