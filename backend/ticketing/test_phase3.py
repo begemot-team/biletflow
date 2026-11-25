@@ -11,6 +11,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import OrganizerProfile, User
+from ticketing.management.commands.seed_demo import EVENTS
 from ticketing.models import Event, Order, Payment, PromoCode, Ticket
 from ticketing.testing import activate_paid_sales
 
@@ -198,7 +199,7 @@ class SeedDemoTests(TestCase):
     def test_seed_is_repeatable_and_runs_the_real_checkout(self):
         call_command("seed_demo", stdout=StringIO())
         call_command("seed_demo", stdout=StringIO())
-        self.assertEqual(Event.objects.filter(title__startswith="[Demo]").count(), 3)
+        self.assertEqual(Event.objects.filter(title__startswith="[Demo]").count(), len(EVENTS))
         self.assertEqual(Order.objects.filter(status="confirmed").count(), 2)
         self.assertEqual(Ticket.objects.count(), 3)
         self.assertTrue(PromoCode.objects.filter(code="DEMO10").exists())
