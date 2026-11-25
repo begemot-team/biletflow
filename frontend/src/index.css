@@ -1,1 +1,56 @@
 @import "tailwindcss";
+
+/* Site palette. brand = buttons, links and navigation; sun = the one accent;
+   cat = event categories, see utils/categoryColors.js. */
+@theme {
+  --color-brand-50: #eff6f7;
+  --color-brand-100: #dcebed;
+  --color-brand-200: #b9d5d9;
+  --color-brand-500: #3f8f9d;
+  --color-brand-600: #276f7d;
+  --color-brand-700: #1f5c69;
+  --color-brand-800: #1a4752;
+  --color-brand-900: #14343d;
+  --color-sun-100: #faf1d8;
+  --color-sun-300: #f2d58a;
+  --color-sun-400: #e9c15c;
+  --color-canvas: #f7f9f9;
+  --color-cat-music: #84497a;
+  --color-cat-education: #8f5a2c;
+  --color-cat-sports: #45704f;
+  --color-cat-tech: #46649a;
+  --color-cat-arts: #9c4855;
+  --color-cat-business: #655592;
+
+  --animate-rise: rise 500ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-ticket-in: ticket-in 600ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-barcode: barcode 7s linear both;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(16px); }
+  }
+  @keyframes ticket-in {
+    from { opacity: 0; transform: translateY(28px) rotate(3deg); }
+  }
+  @keyframes barcode {
+    from { clip-path: inset(0 100% 0 0); }
+    to { clip-path: inset(0); }
+  }
+}
+
+/* Tailwind 4 draws a plain `border` in the text color (black); use a soft line instead. */
+@layer base {
+  *, ::before, ::after { border-color: #cfdcde; }
+  /* Form fields need a line that is visible on white. */
+  input, select, textarea { border-color: #7a9094; }
+}
+
+/* Two round bites where a ticket's stub (--stub wide) is torn off */
+@utility ticket-notches {
+  mask: radial-gradient(circle at var(--stub) 0, transparent 9px, #000 9.5px) top / 100% 51% no-repeat,
+    radial-gradient(circle at var(--stub) 100%, transparent 9px, #000 9.5px) bottom / 100% 51% no-repeat;
+}
+
+@utility barcode {
+  background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 5px, currentColor 5px 9px, transparent 9px 11px, currentColor 11px 12px, transparent 12px 16px);
+}
