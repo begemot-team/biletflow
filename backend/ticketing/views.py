@@ -736,7 +736,7 @@ class SupportCaseList(generics.ListAPIView):
         params = self.request.query_params
         if params.get("event") and not params["event"].isdigit():
             raise ValidationError({"event": "Must be an event id."})
-        for field in ("status", "kind", "event"):
+        for field in ("status", "kind", "category", "event"):
             if params.get(field):
                 cases = cases.filter(**{field: params[field]})
         if params.get("assigned") == "me":

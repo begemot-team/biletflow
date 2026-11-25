@@ -45,6 +45,13 @@ class EventCancellationTests(Phase3Helpers, TestCase):
         self.assertEqual(len(mail.outbox), previous_emails + 1)
         self.assertEqual(mail.outbox[-1].to, [self.buyer.email])
         self.assertIn("has been cancelled", mail.outbox[-1].body)
+        self.assertEqual(len(mail.outbox[-1].attachments), 1)
+        calendar = mail.outbox[-1].attachments[0]
+        self.assertEqual(calendar[0], f"biletflow-event-{event}-cancelled.ics")
+        self.assertEqual(calendar[2], "text/calendar")
+        self.assertIn("METHOD:CANCEL\r\n", calendar[1])
+        self.assertIn(f"UID:event-{event}@biletflow\r\n", calendar[1])
+        self.assertIn("STATUS:CANCELLED\r\n", calendar[1])
         self.assertEqual(
             AuditLog.objects.filter(event_id=event, action="event.cancelled").count(), 1
         )

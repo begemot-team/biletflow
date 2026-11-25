@@ -4,12 +4,13 @@ Development defaults to console email and tests use the in-memory backend.
 Deployments can enable SMTP.
 """
 
+from datetime import UTC
 from io import BytesIO
 from pathlib import Path
 
 import qrcode
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives, send_mass_mail
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from django.utils.html import escape
 from qrcode.image.svg import SvgPathImage
@@ -246,9 +247,54 @@ def send_event_cancelled(event, recipients):
     subject = "BiletFlow: event cancelled"
     body = (
         f"{event.title} has been cancelled. Its tickets can no longer be used for entry.\n\n"
-        "If you paid for a ticket, contact the organizer about a refund."
+        "If you paid for a ticket, contact the organizer about a refund.\n\n"
+        "The attached calendar update removes or marks the earlier event as cancelled."
     )
-    send_mass_mail((subject, body, None, [recipient]) for recipient in recipients)
+    calendar = cancelled_event_ics(event)
+    for recipient in recipients:
+        message = EmailMultiAlternatives(subject=subject, body=body, to=[recipient])
+        message.attach(f"biletflow-event-{event.pk}-cancelled.ics", calendar, "text/calendar")
+        message.send()
+
+
+def _ics_text(value):
+    return (
+        str(value or "")
+        .replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\n", "\\n")
+    )
+
+
+def _ics_date(value):
+    return value.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+
+
+def cancelled_event_ics(event, now=None):
+    """RFC 5545 cancellation using the same stable event UID as calendar exports."""
+    stamp = now or timezone.now()
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Begemot//BiletFlow//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:CANCEL",
+        "BEGIN:VEVENT",
+        f"UID:event-{event.pk}@biletflow",
+        f"DTSTAMP:{_ics_date(stamp)}",
+        f"DTSTART:{_ics_date(event.starts_at)}",
+        f"DTEND:{_ics_date(event.ends_at)}",
+        "SEQUENCE:1",
+        "STATUS:CANCELLED",
+        f"SUMMARY:{_ics_text(event.title)}",
+        f"LOCATION:{_ics_text(event.venue)}",
+        f"URL:{settings.FRONTEND_BASE_URL}/events/{event.pk}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+    return "\r\n".join(lines) + "\r\n"
 
 
 def send_support_notification(case_id, recipient, summary):
