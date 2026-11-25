@@ -84,7 +84,7 @@ function Account() {
           <h2 className="font-semibold">{t('Verify your email')}</h2>
           <p className="mt-1 text-sm">{t('Open the confirmation link sent to {email}.', { email: user.email })}</p>
           <button type="button" onClick={resendVerification} disabled={sendingVerification}
-            className="mt-2 text-indigo-600 underline disabled:opacity-50">
+            className="mt-2 text-brand-700 underline disabled:opacity-50">
             {sendingVerification ? t('Requesting…') : t('Send another link')}
           </button>
           {verificationNotice && <p role={verificationNotice.error ? 'alert' : 'status'} className="mt-2 text-sm">
@@ -100,7 +100,7 @@ function Account() {
             {pending.map((o) => (
               <li key={o.id}>
                 {title(o.event)} · {t('reserved until {date}', { date: date(o.expires_at, SHORT) })} ·{' '}
-                <Link to={`/checkout/${o.id}`} className="text-indigo-600 underline">{t('Continue checkout')}</Link>
+                <Link to={`/checkout/${o.id}`} className="text-brand-700 underline">{t('Continue checkout')}</Link>
               </li>
             ))}
           </ul>
@@ -109,7 +109,7 @@ function Account() {
 
       {tickets.length === 0 ? (
         <p className="mt-6 text-gray-600">
-          {t('You have no tickets yet.')} <Link to="/" className="text-indigo-600 underline">{t('Find an event')}</Link>
+          {t('You have no tickets yet.')} <Link to="/" className="text-brand-700 underline">{t('Find an event')}</Link>
         </p>
       ) : (
         <ul className="mt-6 divide-y rounded-xl border bg-white">
@@ -118,10 +118,13 @@ function Account() {
               <span>
                 <strong>{title(ticket.event)}</strong>
                 <span className="block text-sm text-gray-600">
-                  {t('Ticket #{id}', { id: ticket.id })} · {t(TICKET_STATUS[ticket.status] ?? ticket.status)}
+                  {t('Ticket #{id}', { id: ticket.id })} ·{' '}
+                  <span className={`rounded px-2 py-0.5 text-xs ${ticket.status === 'valid' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
+                    {t(TICKET_STATUS[ticket.status] ?? ticket.status)}
+                  </span>
                 </span>
               </span>
-              <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 underline">{t('Show QR')}</Link>
+              <Link to={`/tickets/${ticket.id}`} className="text-brand-700 underline">{t('Show QR')}</Link>
             </li>
           ))}
         </ul>
@@ -139,7 +142,7 @@ function Account() {
                 {o.status !== 'pending' && (
                   <>
                     {' · '}
-                    <Link to={`/support/new?order=${o.id}`} className="text-indigo-600 underline">{t('Get help')}</Link>
+                    <Link to={`/support/new?order=${o.id}`} className="text-brand-700 underline">{t('Get help')}</Link>
                   </>
                 )}
                 {attendeeCanCancel(o) && (

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, fieldErrors } from '../api/client'
 import TicketTypes from '../components/TicketTypes.jsx'
+import { categoryColors } from '../utils/categoryColors'
 
 const CATEGORIES = ['music', 'education', 'sports', 'tech', 'arts', 'business', 'other']
 
@@ -62,7 +63,7 @@ function Input({ label, error, className = '', ...props }) {
     <label className={`block ${className}`}>
       <span className="text-sm">{label}</span>
       <input {...props} aria-invalid={Boolean(error)}
-        className="mt-1 w-full rounded bg-gray-50 px-3 py-2 focus:outline-2 focus:outline-indigo-500" />
+        className="mt-1 w-full rounded border bg-white px-3 py-2 focus:outline-2 focus:outline-brand-500" />
       {error && <span className="mt-1 block text-sm text-red-600">{error}</span>}
     </label>
   )
@@ -143,13 +144,13 @@ function CreateEvent() {
     <main>
       <h2 className="text-2xl">{event.title}</h2>
       <p className="mt-2">This event has been cancelled.</p>
-      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-indigo-600 underline">View sales and orders</Link>
+      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-brand-700 underline">View sales and orders</Link>
     </main>
   )
 
   return (
     <main className="grid gap-8 md:grid-cols-2 md:divide-x md:divide-gray-300">
-      <form onSubmit={saveDraft} className="space-y-4 rounded-lg bg-gray-200 p-6" noValidate>
+      <form onSubmit={saveDraft} className="space-y-4 rounded-lg border border-brand-200 bg-brand-50 p-6" noValidate>
         <h2 className="text-2xl">{id ? 'Edit Event' : 'Create Event'}</h2>
         <Input label="Event name" name="title" required maxLength={200}
           value={form.title} onChange={update} error={errors.title} />
@@ -184,11 +185,11 @@ function CreateEvent() {
         <label className="block">
           <span className="text-sm">Description</span>
           <textarea name="description" rows={3} value={form.description} onChange={update}
-            className="mt-1 w-full rounded bg-gray-50 px-3 py-2" />
+            className="mt-1 w-full rounded border bg-white px-3 py-2" />
         </label>
         {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
         <button disabled={busy || event?.published}
-          className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+          className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
           {event ? 'Save changes' : 'Save draft'}
         </button>
       </form>
@@ -198,7 +199,7 @@ function CreateEvent() {
         <p className="text-sm uppercase tracking-wide text-gray-500">Preview</p>
         <article className="mt-3 rounded-xl border bg-white p-6">
           {form.category && (
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs">{form.category}</span>
+            <span className={`rounded-full px-3 py-1 text-xs font-medium ${categoryColors(form.category).soft}`}>{form.category}</span>
           )}
           <h3 className="mt-3 text-2xl font-semibold">{form.title || 'Event name'}</h3>
           <p className="mt-2 text-gray-600">
@@ -217,7 +218,7 @@ function CreateEvent() {
             </p>
             {event.published ? (
               <>
-                <Link to={`/events/${event.id}`} className="text-indigo-600 underline">
+                <Link to={`/events/${event.id}`} className="text-brand-700 underline">
                   View public page
                 </Link>
                 <button type="button" onClick={() => setPublished(false)} disabled={busy}
@@ -227,7 +228,7 @@ function CreateEvent() {
               </>
             ) : (
               <button type="button" onClick={() => setPublished(true)} disabled={busy}
-                className="rounded bg-indigo-600 px-5 py-2 text-white disabled:opacity-50">
+                className="rounded bg-emerald-700 hover:bg-emerald-800 px-5 py-2 text-white disabled:opacity-50">
                 Publish
               </button>
             )}

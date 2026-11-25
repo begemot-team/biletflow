@@ -151,7 +151,7 @@ function Checkout() {
   if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{t(error)}</p>
   if (!order) return <p className="mx-auto max-w-3xl px-6 py-20">{t('Loading…')}</p>
 
-  const eventLink = <Link to={`/events/${order.event}`} className="text-indigo-600 underline">{t('Back to the event')}</Link>
+  const eventLink = <Link to={`/events/${order.event}`} className="text-brand-700 underline">{t('Back to the event')}</Link>
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
@@ -213,7 +213,7 @@ function Checkout() {
           {message && <p role="alert" className="mt-4 text-sm text-red-600">{t(message)}</p>}
           <div className="mt-6 flex flex-wrap gap-3">
             <button type="button" disabled={busy || !quote} onClick={() => pay('success')}
-              className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+              className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
               {quote?.total_minor === 0 ? t('Get tickets') : t('Pay (test payment)')}
             </button>
             <button type="button" disabled={busy || !quote} onClick={() => pay('failure')}
@@ -239,11 +239,11 @@ function Checkout() {
             {order.tickets.map((ticket) => (
               <li key={ticket.id} className="flex justify-between p-4">
                 <span>{names[ticket.ticket_type] ?? t('Ticket')} #{ticket.id} · {ticket.attendee_name}</span>
-                <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 underline">{t('Show QR')}</Link>
+                <Link to={`/tickets/${ticket.id}`} className="text-brand-700 underline">{t('Show QR')}</Link>
               </li>
             ))}
           </ul>
-          <Link to="/account" className="mt-4 inline-block text-indigo-600 underline">{t('All my tickets')}</Link>
+          <Link to="/account" className="mt-4 inline-block text-brand-700 underline">{t('All my tickets')}</Link>
         </section>
       )}
 

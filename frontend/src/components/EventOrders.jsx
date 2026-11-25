@@ -54,7 +54,7 @@ function EventOrders({ eventId, onChanged }) {
       ) : (
         <div className="mt-3 overflow-x-auto rounded-xl border bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="border-b bg-gray-50 text-gray-600">
+            <thead className="border-b bg-brand-50 text-brand-800">
               <tr>
                 <th className="p-3 font-medium">Order</th>
                 <th className="p-3 font-medium">Buyer</th>

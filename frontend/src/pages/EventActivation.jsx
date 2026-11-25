@@ -57,7 +57,7 @@ function EventActivation() {
   if (event.cancelled_at) return (
     <main>
       <p>This event has been cancelled. Paid sales are closed.</p>
-      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-indigo-600 underline">View sales and orders</Link>
+      <Link to={`/organizer/events/${id}`} className="mt-3 inline-block text-brand-700 underline">View sales and orders</Link>
     </main>
   )
 
@@ -92,11 +92,11 @@ function EventActivation() {
                 <span className="sr-only">{item.done ? ' — done' : ' — not done'}</span>
               </p>
               {item.step === 'paid_ticket_type' && !item.done && (
-                <Link to={`/organizer/events/${id}/edit`} className="text-sm text-indigo-600 underline">Add a paid ticket type</Link>
+                <Link to={`/organizer/events/${id}/edit`} className="text-sm text-brand-700 underline">Add a paid ticket type</Link>
               )}
               {item.step === 'identity_verified' && !item.done && (
                 <button disabled={busy} onClick={() => submit({ identity_confirmed: true }, 'Identity verified.')}
-                  className="mt-2 rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                  className="mt-2 rounded bg-brand-600 hover:bg-brand-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
                   Run simulated verification
                 </button>
               )}
@@ -106,7 +106,7 @@ function EventActivation() {
                   <input id="payout" value={payout} onChange={(e) => setPayout(e.target.value)} maxLength={64}
                     placeholder="SIM-PAYOUT-1" className="rounded border px-3 py-1.5 text-sm"
                     aria-invalid={Boolean(errors.payout)} aria-describedby={errors.payout ? 'payout-error' : undefined} />
-                  <button disabled={busy} className="rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                  <button disabled={busy} className="rounded bg-brand-600 hover:bg-brand-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
                     {item.done ? 'Update' : 'Connect'}
                   </button>
                   {errors.payout && <p id="payout-error" className="w-full text-sm text-red-600">{errors.payout}</p>}
@@ -114,7 +114,7 @@ function EventActivation() {
               )}
               {item.step === 'terms_accepted' && !item.done && (
                 <button disabled={busy} onClick={() => submit({ accept_terms: true }, 'Terms accepted.')}
-                  className="mt-2 rounded bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                  className="mt-2 rounded bg-brand-600 hover:bg-brand-700 px-3 py-1.5 text-sm text-white disabled:opacity-50">
                   Accept paid-event terms
                 </button>
               )}

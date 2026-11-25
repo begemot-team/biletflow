@@ -23,7 +23,7 @@ function MoneyTable({ rows, kind }) {
   return (
     <div className="relative mt-3 overflow-x-auto rounded-xl border bg-white">
       <table className="w-full text-left text-sm">
-        <thead className="border-b bg-gray-50 text-gray-600">
+        <thead className="border-b bg-brand-50 text-brand-800">
           <tr>
             <th className="p-3 font-medium">{kind === 'campaign' ? 'Campaign' : 'Ticket type'}</th>
             <th className="p-3 text-right font-medium">Issued</th>
@@ -150,7 +150,7 @@ export default function EventAnalytics() {
           <h1 className="text-3xl font-bold">Analytics</h1>
           <p className="mt-1 text-gray-600">Real sales, inventory, campaign and check-in data from the backend.</p>
         </div>
-        {current && <Link to={`/organizer/events/${eventId}`} className="text-indigo-600 underline">Open event sales</Link>}
+        {current && <Link to={`/organizer/events/${eventId}`} className="text-brand-700 underline">Open event sales</Link>}
       </div>
 
       <form onSubmit={apply} className="mt-6 rounded-xl border bg-white p-4">
@@ -174,7 +174,7 @@ export default function EventAnalytics() {
           </label>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="submit" className="rounded bg-black px-4 py-2 text-white">Apply filters</button>
+          <button type="submit" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">Apply filters</button>
           <button type="button" className="rounded border px-3 py-2" onClick={() => preset(7)}>Last 7 days</button>
           <button type="button" className="rounded border px-3 py-2" onClick={() => preset(30)}>Last 30 days</button>
           <button type="button" className="rounded border px-3 py-2" onClick={allTime}>All time</button>
@@ -206,7 +206,7 @@ export default function EventAnalytics() {
             <Stat label="Estimated payout" value={formatAmount(totals.net_receipts_minor - totals.fees_minor)} detail="Net receipts − fees" />
           </div>
           {inventory.ticket_type && (
-            <p className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm">
+            <p className="mt-3 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm">
               <strong>{inventory.ticket_type.name}:</strong> {inventory.ticket_type.active_tickets} active, {inventory.ticket_type.type_remaining} of {inventory.ticket_type.quantity} remaining. Event capacity remains {inventory.capacity}.
             </p>
           )}

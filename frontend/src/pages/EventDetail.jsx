@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { api } from '../api/client'
 import { useAuth } from '../auth/auth'
 import AddToCalendar from '../components/AddToCalendar.jsx'
+import { categoryColors } from '../utils/categoryColors'
 import { formatMoney } from '../utils/money'
 import { useI18n } from '../i18n/i18n.js'
 
@@ -108,18 +109,20 @@ function EventDetail() {
       {event.images?.[0] && (
         <img src={event.images[0]} alt="" className="mt-4 aspect-video w-full rounded-xl object-cover" />
       )}
-      {event.category && (
-        <span className="mt-4 block w-fit rounded-full bg-gray-100 px-3 py-1 text-xs">{t(event.category)}</span>
-      )}
-      <h1 className="mt-3 text-4xl font-bold">{event.title}</h1>
-      <p className="mt-3 text-gray-600">
-        {date(event.starts_at, FULL)} · {event.venue}
-      </p>
+      <header className={`mt-4 rounded-xl p-6 text-white sm:p-8 ${categoryColors(event.category).solid}`}>
+        {event.category && (
+          <span className="mb-3 block w-fit rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900">{t(event.category)}</span>
+        )}
+        <h1 className="text-4xl font-bold text-balance wrap-anywhere">{event.title}</h1>
+        <p className="mt-3">
+          {date(event.starts_at, FULL)} · {event.venue}
+        </p>
+      </header>
       {event.cancelled_at ? (
         <p role="status" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
           {t('This event has been cancelled. Ticket sales are closed.')}
         </p>
-      ) : <AddToCalendar event={event} className="mt-2" />}
+      ) : <AddToCalendar event={event} className="mt-4" />}
       {event.description && <p className="mt-6 whitespace-pre-line">{event.description}</p>}
 
       {!event.cancelled_at && <h2 className="mt-10 text-xl font-semibold">{t('Tickets')}</h2>}
@@ -172,7 +175,7 @@ function EventDetail() {
             </p>
             {orderError && <p role="alert" className="text-sm text-red-600">{t(orderError)}</p>}
             <button type="button" onClick={reserve} disabled={count === 0 || busy}
-              className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+              className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
               {busy ? t('Reserving…') : user ? t('Continue to checkout') : t('Log in to buy')}
             </button>
           </div>

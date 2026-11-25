@@ -9,7 +9,7 @@ function Input({ label, error, ...props }) {
     <label className="block">
       <span className="text-sm">{label}</span>
       <input {...props} aria-invalid={Boolean(error)}
-        className="mt-1 w-full rounded bg-gray-50 px-3 py-2 focus:outline-2 focus:outline-indigo-500" />
+        className="mt-1 w-full rounded border bg-white px-3 py-2 focus:outline-2 focus:outline-brand-500" />
       {error && <span className="mt-1 block text-sm text-red-600">{error}</span>}
     </label>
   )
@@ -101,7 +101,7 @@ export default function TicketTypes({ eventId }) {
         </ul>
       )}
 
-      <form onSubmit={add} className="mt-4 space-y-3 rounded-lg bg-gray-200 p-4" noValidate>
+      <form onSubmit={add} className="mt-4 space-y-3 rounded-lg border border-brand-200 bg-brand-50 p-4" noValidate>
         <p className="font-medium">Add a ticket type</p>
         <Input label="Name" name="name" required maxLength={120} placeholder="Standard"
           value={form.name} onChange={update} error={errors.name} />
@@ -114,7 +114,7 @@ export default function TicketTypes({ eventId }) {
             value={form.max_per_order} onChange={update} error={errors.max_per_order} />
         </div>
         {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={busy} className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
+        <button disabled={busy} className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
           Add ticket type
         </button>
       </form>

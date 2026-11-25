@@ -38,7 +38,7 @@ function Login() {
       footer={
         <>
           {t('New to Begemot.com?')}{' '}
-          <Link to="/register" state={location.state} className="text-indigo-600 underline">
+          <Link to="/register" state={location.state} className="text-brand-700 underline">
             {t('Register')}
           </Link>
         </>
@@ -51,12 +51,12 @@ function Login() {
           <Field label={t('Password')} name="password" type="password" autoComplete="current-password" required
             value={form.password} onChange={update} error={errors.password} className="pr-28" />
           <Link to="/forgot-password" state={location.state}
-            className="absolute right-3 top-3 text-sm text-indigo-700 underline">
+            className="absolute right-3 top-3 text-sm text-brand-700 underline">
             {t('Forgot?')}
           </Link>
         </div>
         {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
-        <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
+        <button disabled={submitting} className="w-full rounded bg-brand-600 hover:bg-brand-700 py-2.5 text-lg text-white disabled:opacity-50">
           {submitting ? t('Logging in…') : t('Login')}
         </button>
       </form>

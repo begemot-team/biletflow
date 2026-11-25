@@ -44,6 +44,16 @@ function formatKazakhDate(instant, { dateStyle, timeStyle, timeZone }) {
   return pieces.join(', ')
 }
 
+// Day and short month for an event's date stub: { day: '4', month: 'дек' }
+export function formatDayMonth(language, value, timeZone) {
+  const instant = new Date(value)
+  const part = (options) => new Intl.DateTimeFormat(LOCALES[language] ?? LOCALES[DEFAULT_LANGUAGE], { ...options, timeZone }).format(instant)
+  const month = language === 'kk'
+    ? KK_MONTHS[Number(part({ month: 'numeric' })) - 1].slice(0, 3)
+    : part({ month: 'short' }).replace('.', '')
+  return { day: part({ day: 'numeric' }), month }
+}
+
 // Same instant, written the way the chosen language writes dates.
 export function formatDate(language, value, options) {
   const instant = new Date(value)

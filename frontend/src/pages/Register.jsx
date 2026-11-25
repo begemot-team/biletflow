@@ -55,7 +55,7 @@ function Register() {
       footer={
         <>
           {t('Already have an account?')}{' '}
-          <Link to="/login" state={location.state} className="text-indigo-600 underline">
+          <Link to="/login" state={location.state} className="text-brand-700 underline">
             {t('Login')}
           </Link>
         </>
@@ -77,7 +77,7 @@ function Register() {
           {t('I want to organize events')}
         </label>
         {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
-        <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
+        <button disabled={submitting} className="w-full rounded bg-brand-600 hover:bg-brand-700 py-2.5 text-lg text-white disabled:opacity-50">
           {submitting ? t('Creating account…') : t('Register')}
         </button>
       </form>

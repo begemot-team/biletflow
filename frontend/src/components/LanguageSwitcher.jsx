@@ -9,7 +9,7 @@ export default function LanguageSwitcher() {
       {LANGUAGES.map(({ code, label, name }) => (
         <button key={code} type="button" lang={code} title={name} aria-label={name} aria-pressed={language === code}
           onClick={() => setLanguage(code)}
-          className={`px-2 py-1 ${language === code ? 'bg-black text-white' : 'bg-white text-gray-600 hover:text-black'}`}>
+          className={`px-2 py-1 ${language === code ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:text-brand-700'}`}>
           {label}
         </button>
       ))}
