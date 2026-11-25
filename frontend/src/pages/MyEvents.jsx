@@ -21,7 +21,7 @@ function MyEvents() {
     <main className="max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">My events</h1>
-        <Link to="/organizer/events/new" className="rounded bg-black px-4 py-2 text-white">
+        <Link to="/organizer/events/new" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">
           Create event
         </Link>
       </div>
@@ -34,7 +34,7 @@ function MyEvents() {
             <li key={ev.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <span>
                 <strong>{ev.title}</strong>
-                <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published && !ev.cancelled_at ? 'bg-green-100' : 'bg-gray-200'}`}>
+                <span className={`ml-2 rounded px-2 py-0.5 text-xs ${ev.published && !ev.cancelled_at ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700'}`}>
                   {ev.cancelled_at ? 'Cancelled' : ev.published ? 'Published' : 'Draft'}
                 </span>
                 <span className="block text-sm text-gray-600">
@@ -42,14 +42,14 @@ function MyEvents() {
                 </span>
               </span>
               <span className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                <Link to={`/organizer/events/${ev.id}`} className="text-indigo-600 underline">Sales</Link>
-                {!ev.cancelled_at && <Link to={`/organizer/events/${ev.id}/edit`} className="text-indigo-600 underline">
+                <Link to={`/organizer/events/${ev.id}`} className="text-brand-700 underline">Sales</Link>
+                {!ev.cancelled_at && <Link to={`/organizer/events/${ev.id}/edit`} className="text-brand-700 underline">
                   Edit &amp; tickets
                 </Link>}
-                <Link to={`/organizer/events/${ev.id}/staff`} className="text-indigo-600 underline">Event Admins</Link>
-                <Link to={`/organizer/analytics?event=${ev.id}`} className="text-indigo-600 underline">Analytics</Link>
+                <Link to={`/organizer/events/${ev.id}/staff`} className="text-brand-700 underline">Event Admins</Link>
+                <Link to={`/organizer/analytics?event=${ev.id}`} className="text-brand-700 underline">Analytics</Link>
                 {ev.published && (
-                  <Link to={`/events/${ev.id}`} className="text-indigo-600 underline">Public page</Link>
+                  <Link to={`/events/${ev.id}`} className="text-brand-700 underline">Public page</Link>
                 )}
               </span>
             </li>

@@ -6,8 +6,9 @@ import {
   ATTENDEE_CATEGORIES, PLATFORM_CATEGORIES, STATUSES, caseHeader, isSupportSide, mergeMessages, statusLabel,
 } from '../utils/support'
 import { supportAssignees } from '../utils/staff'
+import { useI18n } from '../i18n/i18n.js'
 
-const dateFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 const POLL_MS = 10000 // the API has no websockets; clients poll ?after=
 const HEADER_EVERY = 3 // also refresh status/assignment every 30 s without new messages
 
@@ -16,6 +17,7 @@ const HEADER_EVERY = 3 // also refresh status/assignment every 30 s without new 
 // can_manage_support, platform admin) both reply here; only the support side
 // changes status and assignment.
 function CaseThread({ id }) {
+  const { t, date } = useI18n()
   const { user } = useAuth()
   const [supportCase, setSupportCase] = useState(null)
   const [messages, setMessages] = useState([])
@@ -112,8 +114,8 @@ function CaseThread({ id }) {
     }
   }
 
-  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{error}</p>
-  if (!supportCase) return <p className="mx-auto max-w-3xl px-6 py-20">Loading…</p>
+  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{t(error)}</p>
+  if (!supportCase) return <p className="mx-auto max-w-3xl px-6 py-20">{t('Loading…')}</p>
 
   const staff = isSupportSide(supportCase, user)
   const categories = supportCase.kind === 'platform' ? PLATFORM_CATEGORIES : ATTENDEE_CATEGORIES
@@ -124,40 +126,40 @@ function CaseThread({ id }) {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link to="/support" className="text-sm text-gray-500">← Support</Link>
+      <Link to="/support" className="text-sm text-gray-500">← {t('Support')}</Link>
       <h1 className="mt-2 text-3xl font-bold">{supportCase.subject}</h1>
       <p className="mt-1 text-sm text-gray-600">
-        #{supportCase.id} · {categories[supportCase.category] ?? supportCase.category}
-        {supportCase.ticket && <> · <Link to={`/tickets/${supportCase.ticket}`} className="underline">Ticket #{supportCase.ticket}</Link></>}
-        {!supportCase.ticket && supportCase.order && ` · Order #${supportCase.order}`}
-        {supportCase.event && <> · <Link to={`/events/${supportCase.event}`} className="underline">Event</Link></>}
-        {staff && ` · from ${supportCase.requester_email}`}
+        #{supportCase.id} · {t(categories[supportCase.category] ?? supportCase.category)}
+        {supportCase.ticket && <> · <Link to={`/tickets/${supportCase.ticket}`} className="underline">{t('Ticket #{id}', { id: supportCase.ticket })}</Link></>}
+        {!supportCase.ticket && supportCase.order && ` · ${t('Order #{id}', { id: supportCase.order })}`}
+        {supportCase.event && <> · <Link to={`/events/${supportCase.event}`} className="underline">{t('Event')}</Link></>}
+        {staff && ` · ${t('from {email}', { email: supportCase.requester_email })}`}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-        <span className={`rounded px-2 py-0.5 ${resolved ? 'bg-gray-200' : 'bg-amber-100'}`}>
-          {statusLabel(supportCase.status, staff)}
+        <span className={`rounded px-2 py-0.5 ${resolved ? 'bg-gray-200 text-gray-700' : 'bg-amber-100 text-amber-800'}`}>
+          {t(statusLabel(supportCase.status, staff))}
         </span>
         <span className="text-gray-600">
-          {supportCase.assigned_to_email ? `Assigned to ${supportCase.assigned_to_email}` : 'Not assigned yet'}
+          {supportCase.assigned_to_email ? t('Assigned to {email}', { email: supportCase.assigned_to_email }) : t('Not assigned yet')}
         </span>
         {staff && (
           <>
             <label>
-              <span className="sr-only">Status</span>
+              <span className="sr-only">{t('Status')}</span>
               <select value={supportCase.status} disabled={busy} onChange={(e) => change({ status: e.target.value })}
                 className="rounded border bg-white px-2 py-1">
-                {Object.entries(STATUSES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                {Object.entries(STATUSES).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
               </select>
             </label>
             {assignees ? (
               <label>
-                <span className="sr-only">Assigned to</span>
+                <span className="sr-only">{t('Assigned to')}</span>
                 <select value={supportCase.assigned_to ?? ''} disabled={busy}
                   onChange={(e) => change({ assigned_to: e.target.value ? Number(e.target.value) : null })}
                   className="max-w-full rounded border bg-white px-2 py-1">
-                  <option value="">Not assigned</option>
-                  {assignees.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                  <option value="">{t('Not assigned')}</option>
+                  {assignees.map((a) => <option key={a.id} value={a.id}>{a.id === user.id ? t('Me ({email})', { email: a.email }) : a.label}</option>)}
                   {supportCase.assigned_to && !assignees.some((a) => a.id === supportCase.assigned_to) && (
                     <option value={supportCase.assigned_to}>{supportCase.assigned_to_email}</option>
                   )}
@@ -165,10 +167,10 @@ function CaseThread({ id }) {
               </label>
             ) : supportCase.assigned_to === user.id ? (
               <button type="button" disabled={busy} onClick={() => change({ assigned_to: null })}
-                className="text-indigo-600 underline disabled:opacity-50">Unassign me</button>
+                className="text-brand-700 underline disabled:opacity-50">{t('Unassign me')}</button>
             ) : (
               <button type="button" disabled={busy} onClick={() => change({ assigned_to: user.id })}
-                className="text-indigo-600 underline disabled:opacity-50">Assign to me</button>
+                className="text-brand-700 underline disabled:opacity-50">{t('Assign to me')}</button>
             )}
           </>
         )}
@@ -178,10 +180,10 @@ function CaseThread({ id }) {
         {messages.map((m) => {
           const mine = m.author === user.id
           return (
-            <li key={m.id} className={`max-w-[85%] rounded-xl border p-3 ${mine ? 'ml-auto bg-indigo-50' : 'bg-white'}`}>
+            <li key={m.id} className={`max-w-[85%] rounded-xl border p-3 ${mine ? 'ml-auto bg-brand-50' : 'bg-white'}`}>
               <p className="text-xs text-gray-500">
-                {mine ? 'You' : m.author === supportCase.requester ? m.author_email : `${m.author_email} · support`}
-                {' · '}{dateFmt.format(new Date(m.created_at))}
+                {mine ? t('You') : m.author === supportCase.requester ? m.author_email : `${m.author_email} · ${t('support')}`}
+                {' · '}{date(m.created_at, SHORT)}
               </p>
               {/* Plain text: never render message bodies as HTML */}
               <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
@@ -193,23 +195,23 @@ function CaseThread({ id }) {
 
       {resolved ? (
         <p className="mt-6 rounded-xl border bg-gray-50 p-4 text-sm">
-          This case is resolved and closed for replies.{' '}
-          {!staff && <Link to={`/support/new${reopenLink}`} className="text-indigo-600 underline">Open a new case</Link>}
+          {t('This case is resolved and closed for replies.')}{' '}
+          {!staff && <Link to={`/support/new${reopenLink}`} className="text-brand-700 underline">{t('Open a new case')}</Link>}
         </p>
       ) : (
         <form onSubmit={send} className="mt-6">
           <label className="block">
-            <span className="sr-only">Reply</span>
+            <span className="sr-only">{t('Reply')}</span>
             <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={3} maxLength={5000}
-              placeholder="Write a reply…" className="w-full rounded border bg-white px-3 py-2" />
+              placeholder={t('Write a reply…')} className="w-full rounded border bg-white px-3 py-2" />
           </label>
-          <button disabled={busy || !reply.trim()} className="mt-2 rounded bg-black px-5 py-2 text-white disabled:opacity-50">
-            {busy ? 'Sending…' : 'Send'}
+          <button disabled={busy || !reply.trim()} className="mt-2 rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
+            {busy ? t('Sending…') : t('Send')}
           </button>
         </form>
       )}
-      {actionError && <p role="alert" className="mt-2 text-sm text-red-600">{actionError}</p>}
-      <p className="mt-4 text-xs text-gray-500">New replies appear here automatically and are also sent by email.</p>
+      {actionError && <p role="alert" className="mt-2 text-sm text-red-600">{t(actionError)}</p>}
+      <p className="mt-4 text-xs text-gray-500">{t('New replies appear here automatically and are also sent by email.')}</p>
     </main>
   )
 }

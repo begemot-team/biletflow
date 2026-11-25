@@ -23,55 +23,66 @@ import SupportCase from "./pages/SupportCase.jsx";
 import SupportCases from "./pages/SupportCases.jsx";
 import Ticket from "./pages/Ticket.jsx";
 import VerifyEmail from "./pages/VerifyEmail.jsx";
+import LanguageSwitcher from "./components/LanguageSwitcher.jsx";
 import OrganizerLayout from "./components/OrganizerLayout.jsx";
+import { useI18n } from "./i18n/i18n.js";
 
 function App() {
-  const { user, isOrganizer, logout } = useAuth();
+  const { t } = useI18n();
+  const { user, isOrganizer, isPlatformAdmin, logout } = useAuth();
   const location = useLocation();
   // Login/Register are modals: keep Home rendered underneath them
   const isAuthModal = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-canvas">
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-6 py-4">
-          <Link to="/" className="text-2xl font-bold">Begemot.com</Link>
+          <Link to="/" className="text-2xl font-bold text-brand-700">Begemot.com</Link>
 
           <nav className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <Link to="/" className="text-gray-600 hover:text-black">
-              Events
+            <Link to="/" className="text-gray-600 hover:text-brand-700">
+              {t("Events")}
             </Link>
 
             {!user && (
-              <Link to="/organizer/events/new" className="text-gray-600 hover:text-black">
-                Create Event
+              <Link to="/organizer/events/new" className="text-gray-600 hover:text-brand-700">
+                {t("Create Event")}
               </Link>
             )}
 
             {isOrganizer && (
-              <Link to="/organizer" className="text-gray-600 hover:text-black">
-                Dashboard
+              <Link to="/organizer" className="text-gray-600 hover:text-brand-700">
+                {t("Dashboard")}
               </Link>
+            )}
+
+            {isPlatformAdmin && (
+              // /admin is a separate app (see main.jsx), so a full page load, not a router Link.
+              <a href="/admin" className="text-gray-600 hover:text-brand-700">
+                {t("Admin panel")}
+              </a>
             )}
 
             {user ? (
               <>
-                <Link to="/account" className="text-gray-600 hover:text-black">
-                  My Tickets
+                <Link to="/account" className="text-gray-600 hover:text-brand-700">
+                  {t("My Tickets")}
                 </Link>
-                <Link to="/support" className="text-gray-600 hover:text-black">
-                  Support
+                <Link to="/support" className="text-gray-600 hover:text-brand-700">
+                  {t("Support")}
                 </Link>
                 <span className="text-gray-600">{user.first_name || user.email}</span>
-                <button onClick={logout} className="text-gray-600 hover:text-black">
-                  Logout
+                <button onClick={logout} className="text-gray-600 hover:text-brand-700">
+                  {t("Logout")}
                 </button>
               </>
             ) : (
-              <Link to="/login" className="text-gray-600 hover:text-black">
-                Login
+              <Link to="/login" className="text-gray-600 hover:text-brand-700">
+                {t("Login")}
               </Link>
             )}
+            <LanguageSwitcher />
           </nav>
         </div>
       </header>

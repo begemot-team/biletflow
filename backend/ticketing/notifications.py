@@ -10,7 +10,7 @@ from pathlib import Path
 
 import qrcode
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mass_mail
 from django.utils import timezone
 from django.utils.html import escape
 from qrcode.image.svg import SvgPathImage

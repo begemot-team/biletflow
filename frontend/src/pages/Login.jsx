@@ -3,8 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { fieldErrors } from '../api/client'
 import { useAuth } from '../auth/auth'
 import AuthCard, { Field } from '../components/AuthCard'
+import { useI18n } from '../i18n/i18n.js'
 
 function Login() {
+  const { t } = useI18n()
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -32,30 +34,30 @@ function Login() {
 
   return (
     <AuthCard
-      title="Login"
+      title={t('Login')}
       footer={
         <>
-          New to Begemot.com?{' '}
-          <Link to="/register" state={location.state} className="text-indigo-600 underline">
-            Register
+          {t('New to Begemot.com?')}{' '}
+          <Link to="/register" state={location.state} className="text-brand-700 underline">
+            {t('Register')}
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
-        <Field label="Email" name="email" type="email" autoComplete="email" required
+        <Field label={t('Email')} name="email" type="email" autoComplete="email" required
           value={form.email} onChange={update} error={errors.email} />
         <div className="relative">
-          <Field label="Password" name="password" type="password" autoComplete="current-password" required
-            value={form.password} onChange={update} error={errors.password} />
+          <Field label={t('Password')} name="password" type="password" autoComplete="current-password" required
+            value={form.password} onChange={update} error={errors.password} className="pr-28" />
           <Link to="/forgot-password" state={location.state}
-            className="absolute right-3 top-2.5 text-sm text-indigo-700 underline">
-            Forgot?
+            className="absolute right-3 top-3 text-sm text-brand-700 underline">
+            {t('Forgot?')}
           </Link>
         </div>
-        {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={submitting} className="w-full rounded bg-gray-200 py-2.5 text-lg disabled:opacity-50">
-          {submitting ? 'Logging in…' : 'Login'}
+        {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
+        <button disabled={submitting} className="w-full rounded bg-brand-600 hover:bg-brand-700 py-2.5 text-lg text-white disabled:opacity-50">
+          {submitting ? t('Logging in…') : t('Login')}
         </button>
       </form>
     </AuthCard>

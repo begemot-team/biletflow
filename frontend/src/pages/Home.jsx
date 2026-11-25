@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiGet } from "../api/client";
+import EventCard from "../components/EventCard.jsx";
+import HeroSlideshow from "../components/HeroSlideshow.jsx";
+import { useI18n } from "../i18n/i18n.js";
+import { categoryKey } from "../utils/categoryColors";
 
 function Home() {
+  const { t } = useI18n();
   const [events, setEvents] = useState(null);
   const [error, setError] = useState(null);
+  const [category, setCategory] = useState(null); // null = every category
+  const upcoming = useRef(null);
 
   useEffect(() => {
     apiGet("/events?page=1")
@@ -12,50 +19,63 @@ function Home() {
       .catch((err) => setError(err.message));
   }, []);
 
+  const categories = [...new Set((events ?? []).map((event) => categoryKey(event.category)))].filter(Boolean);
+  const shown = events?.filter((event) => category === null || categoryKey(event.category) === category);
+
+  function showEvents() {
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    upcoming.current.scrollIntoView({ behavior: calm ? "auto" : "smooth" });
+  }
+
   return (
     <main>
-      <section className="mx-auto max-w-7xl px-6 py-20">
-        <h2 className="max-w-3xl text-5xl font-bold tracking-tight">
-          Discover events in Kazakhstan
+      <HeroSlideshow>
+        <h2 className="max-w-3xl text-4xl font-bold tracking-tight text-balance sm:text-6xl">
+          {t("Discover events in Kazakhstan")}
         </h2>
 
-        <p className="mt-6 max-w-2xl text-lg text-gray-600">
-          Find events, get your digital tickets, and enjoy your experience.
+        <p className="mt-5 max-w-xl text-lg text-brand-100">
+          {t("Find events, get your digital tickets, and enjoy your experience.")}
         </p>
 
-        <div className="mt-8 flex gap-4">
-          <button className="rounded-lg bg-black px-6 py-3 font-medium text-white">
-            Explore events
+        <div className="mt-8 flex flex-wrap gap-4">
+          <button type="button" onClick={showEvents}
+            className="rounded-lg bg-sun-400 px-6 py-3 font-medium text-brand-900 transition hover:bg-sun-300 motion-safe:hover:-translate-y-0.5">
+            {t("Explore events")}
           </button>
 
           <Link
             to="/organizer/events/new"
-            className="rounded-lg border border-gray-300 bg-white px-6 py-3 font-medium"
+            className="rounded-lg border border-white/60 px-6 py-3 font-medium transition hover:bg-white hover:text-brand-900 motion-safe:hover:-translate-y-0.5"
           >
-            Create an event
+            {t("Create an event")}
           </Link>
         </div>
-      </section>
+      </HeroSlideshow>
 
-      <section className="mx-auto max-w-7xl px-6 pb-20">
-        <h3 className="text-2xl font-semibold">Upcoming events</h3>
+      <section ref={upcoming} className="mx-auto max-w-7xl px-6 py-14">
+        <h3 className="text-2xl font-semibold">{t("Upcoming events")}</h3>
 
-        <div className="mt-6 grid gap-6 md:grid-cols-3">
-          {error && <p role="alert">Не удалось загрузить события: {error}</p>}
+        {categories.length > 1 && (
+          <div role="group" aria-label={t("Filter by category")} className="mt-4 flex flex-wrap gap-2">
+            {[null, ...categories].map((name) => (
+              <button key={name ?? ""} type="button" aria-pressed={category === name} onClick={() => setCategory(name)}
+                className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${category === name ? "border-brand-600 bg-brand-600 text-white" : "bg-white hover:border-brand-600 hover:text-brand-700"}`}>
+                {name === null ? t("All") : t(name)}
+              </button>
+            ))}
+          </div>
+        )}
 
-          {events === null && !error && <p>Загрузка...</p>}
+        <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {error && <p role="alert">{t("Could not load events: {error}", { error: t(error) })}</p>}
 
-          {events?.length === 0 && <p>Событий пока нет.</p>}
+          {events === null && !error && <p>{t("Loading…")}</p>}
 
-          {events?.map((event) => (
-            <Link
-              to={`/events/${event.id}`}
-              className="rounded-xl border bg-white p-6 hover:shadow"
-              key={event.id}
-            >
-              <h4 className="text-xl font-semibold">{event.title}</h4>
-              <p className="mt-2 text-gray-600">{event.venue}</p>
-            </Link>
+          {events?.length === 0 && <p>{t("No events yet.")}</p>}
+
+          {shown?.map((event, order) => (
+            <EventCard event={event} order={order} key={event.id} />
           ))}
         </div>
       </section>

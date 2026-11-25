@@ -3,30 +3,34 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { api } from '../api/client'
 import { useAuth } from '../auth/auth'
 import AddToCalendar from '../components/AddToCalendar.jsx'
+import { categoryColors } from '../utils/categoryColors'
 import { formatMoney } from '../utils/money'
+import { useI18n } from '../i18n/i18n.js'
 
-const dateFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'full', timeStyle: 'short' })
-const shortFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const FULL = { dateStyle: 'full', timeStyle: 'short' }
+const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 const MAX_TICKETS = 100 // per order, enforced by the API too
 
 // Why a ticket type cannot be bought right now, or null if it can.
 // The event-level registration window (SRS 4.2) applies to every ticket type.
-function closedReason(type, now, event) {
+function closedReason(type, now, event, { t, date }) {
   if (event?.registration_opens_at && new Date(event.registration_opens_at) > now) {
-    return `Registration opens ${shortFmt.format(new Date(event.registration_opens_at))}`
+    return t('Registration opens {date}', { date: date(event.registration_opens_at, SHORT) })
   }
   if (event?.registration_closes_at && new Date(event.registration_closes_at) <= now) {
-    return 'Registration is closed'
+    return t('Registration is closed')
   }
   if (type.sales_start && new Date(type.sales_start) > now) {
-    return `On sale from ${shortFmt.format(new Date(type.sales_start))}`
+    return t('On sale from {date}', { date: date(type.sales_start, SHORT) })
   }
-  if (type.sales_end && new Date(type.sales_end) <= now) return 'Sales have ended'
-  if (type.available === 0) return 'Sold out'
+  if (type.sales_end && new Date(type.sales_end) <= now) return t('Sales have ended')
+  if (type.available === 0) return t('Sold out')
   return null
 }
 
 function EventDetail() {
+  const i18n = useI18n()
+  const { t, date } = i18n
   const { id } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -54,9 +58,9 @@ function EventDetail() {
     return () => { active = false }
   }, [id])
 
-  const selected = ticketTypes.filter((t) => quantities[t.id] > 0)
-  const count = selected.reduce((sum, t) => sum + quantities[t.id], 0)
-  const estimate = selected.reduce((sum, t) => sum + t.price_minor * quantities[t.id], 0)
+  const selected = ticketTypes.filter((type) => quantities[type.id] > 0)
+  const count = selected.reduce((sum, type) => sum + quantities[type.id], 0)
+  const estimate = selected.reduce((sum, type) => sum + type.price_minor * quantities[type.id], 0)
 
   function setQuantity(type, value) {
     const others = count - (quantities[type.id] ?? 0)
@@ -79,7 +83,7 @@ function EventDetail() {
         method: 'POST',
         body: {
           event: event.id,
-          items: selected.map((t) => ({ ticket_type: t.id, quantity: quantities[t.id] })),
+          items: selected.map((type) => ({ ticket_type: type.id, quantity: quantities[type.id] })),
         },
       })
       const code = promoCode.trim()
@@ -96,57 +100,59 @@ function EventDetail() {
     }
   }
 
-  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{error}</p>
-  if (!event) return <p className="mx-auto max-w-3xl px-6 py-20">Loading…</p>
+  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{t(error)}</p>
+  if (!event) return <p className="mx-auto max-w-3xl px-6 py-20">{t('Loading…')}</p>
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link to="/" className="text-sm text-gray-500">← All events</Link>
+      <Link to="/" className="text-sm text-gray-500">← {t('All events')}</Link>
       {event.images?.[0] && (
         <img src={event.images[0]} alt="" className="mt-4 aspect-video w-full rounded-xl object-cover" />
       )}
-      {event.category && (
-        <span className="mt-4 block w-fit rounded-full bg-gray-100 px-3 py-1 text-xs">{event.category}</span>
-      )}
-      <h1 className="mt-3 text-4xl font-bold">{event.title}</h1>
-      <p className="mt-3 text-gray-600">
-        {dateFmt.format(new Date(event.starts_at))} · {event.venue}
-      </p>
+      <header className={`mt-4 rounded-xl p-6 text-white sm:p-8 ${categoryColors(event.category).solid}`}>
+        {event.category && (
+          <span className="mb-3 block w-fit rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-900">{t(event.category)}</span>
+        )}
+        <h1 className="text-4xl font-bold text-balance wrap-anywhere">{event.title}</h1>
+        <p className="mt-3">
+          {date(event.starts_at, FULL)} · {event.venue}
+        </p>
+      </header>
       {event.cancelled_at ? (
         <p role="status" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-          This event has been cancelled. Ticket sales are closed.
+          {t('This event has been cancelled. Ticket sales are closed.')}
         </p>
-      ) : <AddToCalendar event={event} className="mt-2" />}
+      ) : <AddToCalendar event={event} className="mt-4" />}
       {event.description && <p className="mt-6 whitespace-pre-line">{event.description}</p>}
 
-      {!event.cancelled_at && <h2 className="mt-10 text-xl font-semibold">Tickets</h2>}
+      {!event.cancelled_at && <h2 className="mt-10 text-xl font-semibold">{t('Tickets')}</h2>}
       {!event.cancelled_at && (ticketTypes.length === 0 ? (
-        <p className="mt-2 text-gray-600">Tickets are not on sale yet.</p>
+        <p className="mt-2 text-gray-600">{t('Tickets are not on sale yet.')}</p>
       ) : (
         <>
           <ul className="mt-3 divide-y rounded-xl border bg-white">
-            {ticketTypes.map((t) => {
-              const reason = closedReason(t, now, event)
-              const quantity = quantities[t.id] ?? 0
+            {ticketTypes.map((type) => {
+              const reason = closedReason(type, now, event, i18n)
+              const quantity = quantities[type.id] ?? 0
               return (
-                <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <li key={type.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <span>
-                    <span className="font-medium">{t.name}</span>
+                    <span className="font-medium">{type.name}</span>
                     <span className="block text-sm text-gray-600">
-                      {formatMoney(t.price_minor)}
-                      {reason ? ` · ${reason}` : ` · ${t.available} left · up to ${t.max_per_order} per order`}
+                      {t(formatMoney(type.price_minor))}
+                      {reason ? ` · ${reason}` : ` · ${t('{left} left · up to {max} per order', { left: type.available, max: type.max_per_order })}`}
                     </span>
                   </span>
                   {!reason && (
                     <span className="flex items-center gap-2">
-                      <button type="button" aria-label={`Fewer ${t.name} tickets`} disabled={quantity === 0 || busy}
-                        onClick={() => setQuantity(t, quantity - 1)}
+                      <button type="button" aria-label={t('Fewer {name} tickets', { name: type.name })} disabled={quantity === 0 || busy}
+                        onClick={() => setQuantity(type, quantity - 1)}
                         className="h-9 w-9 rounded border text-lg disabled:opacity-40">−</button>
-                      <span className="w-8 text-center" aria-live="polite" aria-label={`${t.name} quantity`}>
+                      <span className="w-8 text-center" aria-live="polite" aria-label={t('{name} quantity', { name: type.name })}>
                         {quantity}
                       </span>
-                      <button type="button" aria-label={`More ${t.name} tickets`} disabled={busy}
-                        onClick={() => setQuantity(t, quantity + 1)}
+                      <button type="button" aria-label={t('More {name} tickets', { name: type.name })} disabled={busy}
+                        onClick={() => setQuantity(type, quantity + 1)}
                         className="h-9 w-9 rounded border text-lg disabled:opacity-40">+</button>
                     </span>
                   )}
@@ -157,20 +163,20 @@ function EventDetail() {
 
           <div className="mt-4 space-y-3 rounded-xl border bg-white p-4">
             <label className="block">
-              <span className="text-sm">Promo code</span>
+              <span className="text-sm">{t('Promo code')}</span>
               <input value={promoCode} onChange={(e) => setPromoCode(e.target.value)} maxLength={32}
                 className="mt-1 w-full rounded border px-3 py-2 uppercase" autoComplete="off" />
-              <span className="mt-1 block text-xs text-gray-500">The discount is checked and applied at checkout.</span>
+              <span className="mt-1 block text-xs text-gray-500">{t('The discount is checked and applied at checkout.')}</span>
             </label>
             <p>
-              {count === 0 ? 'Select tickets to continue.' : (
-                <>{count} ticket{count === 1 ? '' : 's'} · <strong>{formatMoney(estimate)}</strong> before discount</>
+              {count === 0 ? t('Select tickets to continue.') : (
+                <>{t('Tickets selected: {count}', { count })} · <strong>{t(formatMoney(estimate))}</strong> {t('before discount')}</>
               )}
             </p>
-            {orderError && <p role="alert" className="text-sm text-red-600">{orderError}</p>}
+            {orderError && <p role="alert" className="text-sm text-red-600">{t(orderError)}</p>}
             <button type="button" onClick={reserve} disabled={count === 0 || busy}
-              className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
-              {busy ? 'Reserving…' : user ? 'Continue to checkout' : 'Log in to buy'}
+              className="rounded bg-brand-600 hover:bg-brand-700 px-5 py-2 text-white disabled:opacity-50">
+              {busy ? t('Reserving…') : user ? t('Continue to checkout') : t('Log in to buy')}
             </button>
           </div>
         </>
