@@ -90,7 +90,7 @@ EVENTS = [
     },
     {
         "title": "[Demo] Beu Awards 2026",
-        "description": "Музыкальная премия: Irina Kairatovna, Ninety One, ALPHA, Ziruza и другие, 6+.",
+        "description": "Музыкальная премия: Irina Kairatovna, Ninety One, Ziruza и другие, 6+.",
         "venue": "Barys Arena, проспект Туран, 57, Астана",
         "category": "Концерты",
         "days": 17,
