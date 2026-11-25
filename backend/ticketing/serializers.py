@@ -56,6 +56,8 @@ class EventSerializer(StrictModelSerializer):
             "starts_at",
             "ends_at",
             "capacity",
+            "registration_opens_at",
+            "registration_closes_at",
             "visibility",
             "refund_policy",
             "published",
@@ -79,6 +81,20 @@ class EventSerializer(StrictModelSerializer):
             raise serializers.ValidationError({"ends_at": "Must be after starts_at."})
         if "starts_at" in attrs and start <= timezone.now():
             raise serializers.ValidationError({"starts_at": "Must be in the future."})
+        opens = attrs.get(
+            "registration_opens_at", getattr(self.instance, "registration_opens_at", None)
+        )
+        closes = attrs.get(
+            "registration_closes_at", getattr(self.instance, "registration_closes_at", None)
+        )
+        if opens and closes and closes <= opens:
+            raise serializers.ValidationError(
+                {"registration_closes_at": "Must be after registration_opens_at."}
+            )
+        if opens and start and opens >= start:
+            raise serializers.ValidationError(
+                {"registration_opens_at": "Must be before the event starts."}
+            )
         return attrs
 
 

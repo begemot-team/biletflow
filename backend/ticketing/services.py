@@ -22,6 +22,7 @@ from .models import (
     OrderItem,
     PaidSalesActivation,
     Payment,
+    PlatformSettings,
     PromoCode,
     PromoRedemption,
     Refund,
@@ -66,6 +67,10 @@ def reserve(user, event_id, items):
     now = timezone.now()
     if event.starts_at <= now:
         raise Conflict("Sales have ended.")
+    if event.registration_opens_at and event.registration_opens_at > now:
+        raise Conflict("Registration has not opened yet.")
+    if event.registration_closes_at and event.registration_closes_at <= now:
+        raise Conflict("Registration is closed.")
     if reserved(event.pk) + sum(item["quantity"] for item in items) > event.capacity:
         raise Conflict("Event capacity exceeded.")
     selected = []
@@ -104,13 +109,29 @@ def reserve(user, event_id, items):
     return order
 
 
+def platform_settings():
+    """Effective platform settings (SRS 4.12): the admin's value, else the deployment default."""
+    row = PlatformSettings.objects.filter(pk=1).first()
+
+    def pick(field, default):
+        value = getattr(row, field) if row else None
+        return default if value is None else value
+
+    return {
+        "activation_fee_minor": pick(
+            "activation_fee_minor", settings.PAID_SALES_ACTIVATION_FEE_MINOR
+        ),
+        "processing_fee_bps": pick("processing_fee_bps", settings.PROCESSING_FEE_BPS),
+    }
+
+
 def processing_fee(amount_minor):
     """Simulated platform processing charge withheld from the organizer payout.
 
     The attendee pays the ticket total; the fee is reported to the organizer in the
     sales summary (SRS 4.6). Rounded half up to a whole tiyn.
     """
-    return (amount_minor * settings.PROCESSING_FEE_BPS + 5000) // 10000
+    return (amount_minor * platform_settings()["processing_fee_bps"] + 5000) // 10000
 
 
 def ensure_checkout_available(user, event, order):
@@ -160,6 +181,8 @@ def checkout(user, order_id, outcome, promo_code=None, attendees=None):
     holders = ticket_holders(user, items, attendees or [])
     if outcome == "failure":
         record_audit(event, user, "payment.failed", order, "Simulated payment failed.")
+        # SRS 4.10: tell the attendee, so a failed payment is not mistaken for a ticket.
+        transaction.on_commit(lambda: notifications.send_payment_failed(order.pk), robust=True)
         return order
     # Totals are always recomputed from purchase-time item prices; a client never
     # supplies a discount. The event is already locked above, so redemption counting
@@ -483,6 +506,24 @@ def invalidate_tickets(order, status):
     return Ticket.objects.filter(order_item__order=order).update(status=status)
 
 
+# Changes to these reach ticket holders by email (SRS 4.10 "event updates").
+ATTENDEE_FACING_FIELDS = ("title", "venue", "starts_at", "ends_at")
+
+
+def notify_event_updated(event, changes):
+    recipients = list(
+        event.orders.filter(status="confirmed")
+        .order_by()
+        .values_list("purchaser__email", flat=True)
+        .distinct()
+    )
+    if recipients:
+        fields = sorted(changes)
+        transaction.on_commit(
+            lambda: notifications.send_event_updated(event.pk, fields, recipients), robust=True
+        )
+
+
 @transaction.atomic
 def cancel_event(user, event_id):
     # Serialize with checkout while allowing an in-flight scan to insert its audit entry.
@@ -667,7 +708,7 @@ def sales_summary(event):
         "event": event.pk,
         "currency": "KZT",
         "simulated": True,
-        "processing_fee_bps": settings.PROCESSING_FEE_BPS,
+        "processing_fee_bps": platform_settings()["processing_fee_bps"],
         "paid_orders": totals["count"],
         # By list price: an order made free by a 100% promo code is a discounted sale.
         "free_registrations": event.orders.filter(status="confirmed", subtotal_minor=0).count(),
@@ -845,7 +886,7 @@ def activation_state(event, activation=None):
         "fee_minor": (
             activation.fee_minor
             if activation and activation.activated_at
-            else settings.PAID_SALES_ACTIVATION_FEE_MINOR
+            else platform_settings()["activation_fee_minor"]
         ),
         "checklist": [{"step": step, "done": done} for step, done in steps.items()],
         "payout_reference": activation.payout_reference if activation else "",
@@ -889,7 +930,7 @@ def submit_activation(user, event_id, data):
         if outcome == "failure":
             record_audit(event, user, "activation.fee_failed", activation, "Simulated failure.")
         else:
-            activation.fee_minor = settings.PAID_SALES_ACTIVATION_FEE_MINOR
+            activation.fee_minor = platform_settings()["activation_fee_minor"]
             activation.fee_reference = uuid4()
             activation.activated_at = now
             record_audit(

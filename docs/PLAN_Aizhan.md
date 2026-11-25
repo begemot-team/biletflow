@@ -90,3 +90,27 @@ PostgreSQL.
   Standard tickets for Jazz Night with `DEMO10` (16 000 ₸ → 14 400 ₸), tickets
   are issued, the organizer refunds the order from the web page, and the sales
   summary and inventory update at once. `demo_mvp.py` passes.
+
+## Final week (Nov 25) — SRS gap review 📍 Submission (Nov 26)
+
+Compared the app with SRS v0.3 and the live Heroku demo; closed the gaps in
+my area (branch `aizhan/registration-window-notifications`, PR #47 → `main`,
+PR #48 → `dev`):
+
+- ✅ Event registration window (SRS 4.2): optional
+  `registration_opens_at` / `registration_closes_at` on events, enforced when
+  an order is created (free tickets too), validated against each other and
+  the event start, copied on duplicate. Organizer form fields and the event
+  page status were added on the web.
+- ✅ Payment-failure email (SRS 4.10): a failed simulated checkout tells the
+  buyer that no tickets were issued and nothing was charged, with a retry link.
+- ✅ Event-update email (SRS 4.10): changing a published event's name, venue
+  or times emails everyone with a confirmed order; unchanged resubmits,
+  other fields and refunded buyers do not trigger it.
+- 11 new backend tests (`test_registration_and_notifications.py`); one older
+  test that asserted "failed payment sends no email" was updated to the new
+  requirement. Documented in `docs/BACKEND_MVP_API.md`.
+- Gaps outside my area (admin portal search/reports, translations, cancelled
+  calendar file, SMTP on Heroku, support-case demo data) were reported to
+  their owners.
+

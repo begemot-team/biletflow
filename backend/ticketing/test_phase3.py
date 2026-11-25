@@ -88,17 +88,21 @@ class OrderConfirmationEmailTests(Phase3Helpers, TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Free registration", mail.outbox[0].body)
 
-    def test_failed_or_repeated_checkout_sends_nothing_new(self):
+    def test_failed_or_repeated_checkout_sends_no_ticket_email(self):
         event, kind = self.inventory()
         self.buy(event, kind, outcome="failure")
-        self.assertEqual(len(mail.outbox), 0)
+        # SRS 4.10: a failed payment is reported, but it carries no tickets.
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("payment failed", mail.outbox[0].subject)
+        self.assertEqual(mail.outbox[0].attachments, [])
         order = Order.objects.get()
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(f"/api/orders/{order.pk}/checkout", {"outcome": "success"})
         with self.captureOnCommitCallbacks(execute=True):
             again = self.client.post(f"/api/orders/{order.pk}/checkout", {"outcome": "success"})
         self.assertEqual(again.status_code, 200)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn("your tickets", mail.outbox[1].subject)
 
     def test_mail_failure_does_not_fail_a_confirmed_order(self):
         event, kind = self.inventory()

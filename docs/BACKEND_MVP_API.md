@@ -65,7 +65,7 @@ approved pet-project MVP.
 | GET `/events` | Published, non-cancelled events from active organizers |
 | POST `/events` | Organizer creates a draft |
 | GET `/events/{id}` | Public if published; drafts visible to owner/admin only |
-| PATCH `/events/{id}` | Owner/admin updates event |
+| PATCH `/events/{id}` | Owner/admin updates event; changing a published event's title, venue or times emails ticket holders (see Event-update email) |
 | DELETE `/events/{id}` | Owner/admin deletes a draft only if it has no orders, campaigns or audit history |
 | POST `/events/{id}/publish` | `{published: true}` or `{published: false}` |
 | POST `/events/{id}/cancel` | Owner/admin cancels a draft, upcoming or ongoing event and receives the event with `cancelled_at`. Repeating the request returns the existing cancellation. |
@@ -117,6 +117,17 @@ responses include id, organizer (profile ID) and published. Capacity must be
 with any historical orders cannot be deleted. Duplicating an event copies
 these fields plus its ticket types into a new unpublished draft with no
 inventory sold or reserved.
+
+Registration window (SRS 4.2): `registration_opens_at` and
+`registration_closes_at` are optional ISO datetimes (null = no limit, so
+registration runs from publication until the event starts). Closing must be
+after opening, and opening must be before `starts_at`; both are checked by the
+API (400) and a database constraint. Outside the window `POST /orders` returns
+409 `Registration has not opened yet.` or `Registration is closed.` for every
+ticket type, free ones included. A ticket type's own `sales_start`/`sales_end`
+can narrow the window further but never widen it. A reservation made inside
+the window can still be checked out until it expires. Duplicating an event
+copies the window.
 
 Create ticket type:
 
@@ -174,7 +185,8 @@ Create order (IDs refer to existing records):
 ```
 
 At most 20 distinct types and 100 tickets per order, further limited by each
-type's max_per_order. All types must belong to the event and be on sale.
+type's max_per_order. All types must belong to the event and be on sale,
+and the event's registration window (if set) must be open.
 Client prices/totals are rejected. Reservation expires after 15 minutes or at
 event start, whichever is earlier. Expired holds stop counting immediately;
 no periodic job is needed. API status is `pending`, `expired`, `cancelled` or
@@ -203,9 +215,29 @@ again, since its validity and remaining redemption count may change meanwhile.
 Every successful checkout - paid or free - sends one email to the purchaser after
 the database transaction commits: event, date, venue, amount (labelled as a
 simulation), every ticket identifier, a link to the account's tickets, and one
-`ticket-<uuid>.svg` QR attachment per ticket. Failed payments and repeated
-checkout of an already confirmed order send nothing. Local development uses the
+`ticket-<uuid>.svg` QR attachment per ticket. Repeated checkout of an already
+confirmed order sends nothing new; a failed payment sends the payment-failure
+email below instead. Local development uses the
 console email backend, so the message appears in `docker compose logs web`.
+
+### Payment-failure email (SRS 4.10)
+
+A checkout with `{outcome: "failure"}` emails the purchaser after commit: the
+event, the amount, that no tickets were issued and nothing was charged, how
+long the reservation is still held, and a link back to
+`{FRONTEND_BASE_URL}/checkout/{order_id}` to retry. It has no attachments and
+never contains ticket identifiers or QR codes.
+
+### Event-update email (SRS 4.10)
+
+When an owner/admin `PATCH /events/{id}` changes the `title`, `venue`,
+`starts_at` or `ends_at` of a published event, every purchaser with a confirmed
+order receives one email after commit listing the new values and the full event
+details, with a link to re-add the event to their calendar. Values are compared
+with the stored event, so resubmitting unchanged fields (the web form sends all
+of them) notifies no one. Other edits (description, capacity, visibility…),
+drafts, cancelled, refunded or pending orders get no email. The change is also
+recorded as `event.updated` in the event's audit log.
 
 ### Processing fee and sales summary (SRS 4.6)
 
@@ -555,3 +587,52 @@ been deployed. Production requires a private key, TLS, production WSGI server,
 explicit hosts, shared throttling and database backups. Keep API and frontend
 on the same origin via a proxy, or configure an explicit CORS allowlist during
 frontend integration. Django admin retains its own session authentication.
+
+## Platform-admin back office (SRS 4.12)
+
+All endpoints below are for platform admins only (`is_superuser`; others get 403),
+except `POST /events/{id}/report`. Money values are in tiyn (`*_minor`, KZT) and
+every payment is simulated (SRS 3.2). Code: `backend/ticketing/admin_views.py`.
+
+| Endpoint | Purpose |
+|---|---|
+| GET `/admin/summary` | Counts for the dashboard: orders, payments, payment failures, refunds, open disputes, open event reports |
+| GET `/admin/orders` | Search all orders on the platform |
+| GET `/admin/payments` | Search all simulated payments; `status=paid\|refunded` |
+| GET `/admin/payment-failures` | Failed checkouts (`kind: checkout`) and failed activation fees (`kind: activation_fee`), from the audit log |
+| GET `/admin/refunds` | Every refund, with who issued it |
+| GET `/admin/disputes` | Support cases in category `payment` or `refund`; `status=` any support-case status |
+| GET `/admin/event-reports` | Reported events; `status=open\|reviewed\|dismissed` |
+| PATCH `/admin/event-reports/{id}` | `{status, resolution_note?}`; `reviewed`/`dismissed` records the admin and time, `open` reopens. To act on the event, use `POST /admin/events/{id}/suspend` |
+| POST `/events/{id}/report` | Any signed-in user who can see the event: `{reason: fraud\|misleading\|inappropriate\|safety\|other, details?}` → 201. 409 if they already have an open report for it, 400 for the organizer's own event |
+| GET/PATCH `/admin/settings` | Activation fee and processing fee (see below) |
+| GET `/admin/exports/{name}` | CSV download of a list: `orders`, `payments`, `payment-failures`, `refunds`, `disputes`, `activations`, `event-reports` |
+
+**Lists** are paginated like the rest of the API (`count`, `next`, `previous`,
+`results`, 20 per page, `?page=`). They all accept `date_from` / `date_to`
+(`YYYY-MM-DD`, on `created_at`) and `event={id}`. `orders` and `payments` also take
+`q`: matches the purchaser email or event title (contains, case-insensitive), an
+order id (digits), or a payment reference (UUID). `orders` takes
+`status=pending|confirmed|cancelled|refunded`. An unknown `status` returns 400.
+
+**Disputes.** Payments are simulated, so there are no card chargebacks. A dispute is
+a support case about a payment or a refund (SRS 4.13); the admin handles it through
+the support-case API.
+
+**Settings.** `GET /admin/settings` returns the values in force:
+
+```json
+{"activation_fee_minor": 500000, "processing_fee_bps": 300, "currency": "KZT",
+ "overridden": {"activation_fee_minor": false, "processing_fee_bps": false},
+ "updated_by_email": null, "updated_at": null, "simulated": true}
+```
+
+`PATCH` with either field changes it (`activation_fee_minor` 0–100 000 000,
+`processing_fee_bps` 0–10 000, i.e. up to 100%); `null` goes back to the deployment
+default from the `PAID_SALES_ACTIVATION_FEE_MINOR` / `PROCESSING_FEE_BPS` config
+vars. A new activation fee applies to activations paid after the change, and a new
+processing fee to payments made after it; earlier records keep what they were charged.
+
+**Exports** take the same filters as the lists, are not paginated, and are UTF-8
+with a byte-order mark so Excel shows Cyrillic event titles correctly. Columns are
+the same fields the JSON list returns.

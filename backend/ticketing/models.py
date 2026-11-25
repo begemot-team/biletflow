@@ -15,6 +15,11 @@ class Event(models.Model):
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
     capacity = models.PositiveIntegerField()
+    # Event-level registration window (SRS 4.2). Both optional: without them
+    # registration is open from publication until the event starts. Each ticket
+    # type can still narrow this with its own sales_start/sales_end.
+    registration_opens_at = models.DateTimeField(null=True, blank=True)
+    registration_closes_at = models.DateTimeField(null=True, blank=True)
     visibility = models.CharField(
         max_length=10,
         choices=[(v, v) for v in ("public", "unlisted", "private")],
@@ -36,6 +41,12 @@ class Event(models.Model):
             models.CheckConstraint(condition=Q(capacity__gt=0), name="event_capacity_positive"),
             models.CheckConstraint(
                 condition=Q(ends_at__gt=F("starts_at")), name="event_dates_valid"
+            ),
+            models.CheckConstraint(
+                condition=Q(registration_opens_at__isnull=True)
+                | Q(registration_closes_at__isnull=True)
+                | Q(registration_closes_at__gt=F("registration_opens_at")),
+                name="event_registration_window_valid",
             ),
         ]
 
@@ -328,3 +339,62 @@ class SupportMessage(models.Model):
 
     class Meta:
         ordering = ["created_at", "pk"]
+
+
+class PlatformSettings(models.Model):
+    """Platform-wide settings a platform admin can change (SRS 4.12).
+
+    A single row (pk=1). An empty field means "use the deployment default" from
+    config/settings.py, so a fresh database behaves exactly as before.
+    """
+
+    activation_fee_minor = models.PositiveBigIntegerField(null=True, blank=True)
+    processing_fee_bps = models.PositiveIntegerField(null=True, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(processing_fee_bps__isnull=True) | Q(processing_fee_bps__lte=10000),
+                name="settings_processing_fee_within_100_percent",
+            ),
+        ]
+
+
+class EventReport(models.Model):
+    """A user's report that an event looks wrong, reviewed by a platform admin (SRS 4.12)."""
+
+    REASONS = ("fraud", "misleading", "inappropriate", "safety", "other")
+    STATUSES = ("open", "reviewed", "dismissed")
+
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name="reports")
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="event_reports"
+    )
+    reason = models.CharField(max_length=20, choices=[(v, v) for v in REASONS])
+    details = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=[(v, v) for v in STATUSES], default="open")
+    resolution_note = models.CharField(max_length=300, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="reviewed_event_reports",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            # One open report per person per event: repeating it adds nothing for the admin.
+            models.UniqueConstraint(
+                fields=["event", "reporter"],
+                condition=Q(status="open"),
+                name="one_open_report_per_user_and_event",
+            ),
+        ]

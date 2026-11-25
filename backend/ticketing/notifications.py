@@ -21,7 +21,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.platypus import KeepInFrame, Paragraph
 
-from .models import Order, SupportCase, Ticket
+from .models import Event, Order, SupportCase, Ticket
 
 TICKET_FONT_NAME = "NotoSans"
 TICKET_FONT_PATH = Path(__file__).with_name("fonts") / "NotoSans-Regular.ttf"
@@ -249,6 +249,67 @@ def send_event_cancelled(event, recipients):
         "If you paid for a ticket, contact the organizer about a refund."
     )
     send_mass_mail((subject, body, None, [recipient]) for recipient in recipients)
+
+
+def send_payment_failed(order_id):
+    """The simulated payment did not go through: no tickets were issued (SRS 4.10)."""
+    order = Order.objects.select_related("event", "purchaser").get(pk=order_id)
+    if order.status != "pending":
+        return
+    event = order.event
+    lines = [
+        f"The payment for your BiletFlow order #{order.pk} did not go through.",
+        "",
+        f"Event: {event.title}",
+        f"Amount: {money(order.total_minor, order.currency)}",
+        "",
+        "No tickets were issued and nothing was charged. Your tickets stay reserved "
+        f"until {timezone.localtime(order.expires_at).strftime('%d.%m.%Y %H:%M')}; "
+        f"you can try again here: {settings.FRONTEND_BASE_URL}/checkout/{order.pk}",
+        "",
+        "Demo environment: no real money is involved.",
+    ]
+    EmailMultiAlternatives(
+        subject=f"BiletFlow: payment failed for {event.title}",
+        body="\n".join(lines) + "\n",
+        to=[order.purchaser.email],
+    ).send()
+
+
+EVENT_FIELD_LABELS = {
+    "title": "Name",
+    "venue": "Venue",
+    "starts_at": "Starts",
+    "ends_at": "Ends",
+}
+
+
+def send_event_updated(event_id, fields, recipients):
+    """Tell ticket holders that the time, place or name of their event changed (SRS 4.10)."""
+    event = Event.objects.get(pk=event_id)
+    if event.cancelled_at:
+        return
+    when = timezone.localtime(event.starts_at).strftime("%d.%m.%Y %H:%M")
+    ends = timezone.localtime(event.ends_at).strftime("%d.%m.%Y %H:%M")
+    current = {"title": event.title, "venue": event.venue, "starts_at": when, "ends_at": ends}
+    body = "\n".join(
+        [
+            f"The organizer changed the details of {event.title}:",
+            "",
+            *(f"- {EVENT_FIELD_LABELS[f]}: {current[f]}" for f in fields),
+            "",
+            f"Event: {event.title}",
+            f"When: {when} – {ends}",
+            f"Venue: {event.venue}",
+            "",
+            "Your tickets stay valid. If you added the event to your calendar, "
+            f"add it again from {settings.FRONTEND_BASE_URL}/events/{event.pk} to update it.",
+        ]
+    )
+    send_mass_mail(
+        (f"BiletFlow: {event.title} has changed", body + "\n", None, [recipient])
+        for recipient in recipients
+    )
 
 
 def send_support_notification(case_id, recipient, summary):
