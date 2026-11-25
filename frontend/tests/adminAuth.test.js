@@ -34,6 +34,12 @@ test('rejects attendee, organizer and event admin even when login claims platfor
     assert.equal(app.saved(), null)
   }
 })
+test('a non-admin main-site session is refused but not signed out', async () => {
+  const app = setup([{ body: { roles: ['attendee'] } }], JSON.stringify(pair))
+  await assert.rejects(app.auth.restore(), { status: 403 })
+  assert.deepEqual(JSON.parse(app.saved()), pair)
+  assert.equal(app.calls.length, 1)
+})
 test('reload validates role and concurrent restoration rotates expired access only once', async () => {
   const app = setup([{ status: 401 }, { body: { access: 'new', refresh: 'rotated' } }, { body: admin }], JSON.stringify(pair))
   const users = await Promise.all([app.auth.restore(), app.auth.restore()])

@@ -1,6 +1,8 @@
 import { createSession } from '../api/session.js'
 
-const KEY = 'biletflow.admin.session'
+// Same key as the main site (api/client.js), so an admin signed in there
+// opens /admin without a second login. The role is still checked on the server.
+const KEY = 'biletflow.session'
 
 export class AuthError extends Error {
   constructor(message, status = 0) {
@@ -22,7 +24,7 @@ function toAuthError(error) {
 // Per-tab storage; never persist passwords or trust a cached role.
 // Login, token refresh and logout come from the shared web session
 // (api/session.js); this module adds the platform-admin role check.
-// The admin portal keeps its own session key, separate from the attendee one.
+// The session is shared with the main site, so signing out here signs out there too.
 export function createAdminAuth(storage, request = fetch) {
   const session = createSession({ storage, key: KEY, request })
   let restoring = null
@@ -31,10 +33,10 @@ export function createAdminAuth(storage, request = fetch) {
     restoring = null
     try { await session.logout() } catch (error) { throw toAuthError(error) }
   }
-  async function requireAdmin(user) {
+  function requireAdmin(user) {
     if (user === null) return null
+    // A non-admin keeps their main-site session; they just cannot use /admin.
     if (!Array.isArray(user?.roles) || !user.roles.includes('platform_admin')) {
-      try { await logout() } catch { /* Local credentials are already removed. */ }
       throw new AuthError('Доступ разрешён только администратору платформы.', 403)
     }
     return user
@@ -54,7 +56,11 @@ export function createAdminAuth(storage, request = fetch) {
       restoring = null
       try { await session.login(email, password) } catch (error) { throw toAuthError(error) }
       // Confirm privileges with the server instead of trusting login or storage metadata.
-      return restore()
+      try { return await restore() } catch (error) {
+        // A non-admin account typed into the admin form is not kept signed in.
+        if (error.status === 403) { try { await logout() } catch { /* Local credentials are already removed. */ } }
+        throw error
+      }
     },
     restore,
     logout,
