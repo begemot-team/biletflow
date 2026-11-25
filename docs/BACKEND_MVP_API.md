@@ -65,7 +65,7 @@ approved pet-project MVP.
 | GET `/events` | Published, non-cancelled events from active organizers |
 | POST `/events` | Organizer creates a draft |
 | GET `/events/{id}` | Public if published; drafts visible to owner/admin only |
-| PATCH `/events/{id}` | Owner/admin updates event |
+| PATCH `/events/{id}` | Owner/admin updates event; changing a published event's title, venue or times emails ticket holders (see Event-update email) |
 | DELETE `/events/{id}` | Owner/admin deletes a draft only if it has no orders, campaigns or audit history |
 | POST `/events/{id}/publish` | `{published: true}` or `{published: false}` |
 | POST `/events/{id}/cancel` | Owner/admin cancels a draft, upcoming or ongoing event and receives the event with `cancelled_at`. Repeating the request returns the existing cancellation. |
@@ -117,6 +117,17 @@ responses include id, organizer (profile ID) and published. Capacity must be
 with any historical orders cannot be deleted. Duplicating an event copies
 these fields plus its ticket types into a new unpublished draft with no
 inventory sold or reserved.
+
+Registration window (SRS 4.2): `registration_opens_at` and
+`registration_closes_at` are optional ISO datetimes (null = no limit, so
+registration runs from publication until the event starts). Closing must be
+after opening, and opening must be before `starts_at`; both are checked by the
+API (400) and a database constraint. Outside the window `POST /orders` returns
+409 `Registration has not opened yet.` or `Registration is closed.` for every
+ticket type, free ones included. A ticket type's own `sales_start`/`sales_end`
+can narrow the window further but never widen it. A reservation made inside
+the window can still be checked out until it expires. Duplicating an event
+copies the window.
 
 Create ticket type:
 
@@ -174,7 +185,8 @@ Create order (IDs refer to existing records):
 ```
 
 At most 20 distinct types and 100 tickets per order, further limited by each
-type's max_per_order. All types must belong to the event and be on sale.
+type's max_per_order. All types must belong to the event and be on sale,
+and the event's registration window (if set) must be open.
 Client prices/totals are rejected. Reservation expires after 15 minutes or at
 event start, whichever is earlier. Expired holds stop counting immediately;
 no periodic job is needed. API status is `pending`, `expired`, `cancelled` or
@@ -203,9 +215,29 @@ again, since its validity and remaining redemption count may change meanwhile.
 Every successful checkout - paid or free - sends one email to the purchaser after
 the database transaction commits: event, date, venue, amount (labelled as a
 simulation), every ticket identifier, a link to the account's tickets, and one
-`ticket-<uuid>.svg` QR attachment per ticket. Failed payments and repeated
-checkout of an already confirmed order send nothing. Local development uses the
+`ticket-<uuid>.svg` QR attachment per ticket. Repeated checkout of an already
+confirmed order sends nothing new; a failed payment sends the payment-failure
+email below instead. Local development uses the
 console email backend, so the message appears in `docker compose logs web`.
+
+### Payment-failure email (SRS 4.10)
+
+A checkout with `{outcome: "failure"}` emails the purchaser after commit: the
+event, the amount, that no tickets were issued and nothing was charged, how
+long the reservation is still held, and a link back to
+`{FRONTEND_BASE_URL}/checkout/{order_id}` to retry. It has no attachments and
+never contains ticket identifiers or QR codes.
+
+### Event-update email (SRS 4.10)
+
+When an owner/admin `PATCH /events/{id}` changes the `title`, `venue`,
+`starts_at` or `ends_at` of a published event, every purchaser with a confirmed
+order receives one email after commit listing the new values and the full event
+details, with a link to re-add the event to their calendar. Values are compared
+with the stored event, so resubmitting unchanged fields (the web form sends all
+of them) notifies no one. Other edits (description, capacity, visibility…),
+drafts, cancelled, refunded or pending orders get no email. The change is also
+recorded as `event.updated` in the event's audit log.
 
 ### Processing fee and sales summary (SRS 4.6)
 
