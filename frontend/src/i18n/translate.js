@@ -19,11 +19,47 @@ export function normalizeLanguage(value) {
   return LANGUAGES.some(({ code }) => code === value) ? value : DEFAULT_LANGUAGE
 }
 
+// Server messages that carry a value, matched back to the dictionary key.
+export const SERVER_TEMPLATES = [
+  'Request failed ({status}).',
+  // activity timeline
+  '{amount} tiyn.',
+  'Full refund of {amount} tiyn.',
+  'Simulated activation fee of {amount} tiyn paid.',
+  'Unused tickets invalidated: {tickets}. Holds closed: {holds}. Free orders cancelled: {orders}.',
+  'Assigned to {email}.',
+]
+const SERVER_PATTERNS = SERVER_TEMPLATES.map((template) => ({
+  template,
+  pattern: new RegExp(`^${template.replace(/[.()]/g, '\\$&').replace(/\{(\w+)\}/g, '(?<$1>\\S+)')}$`),
+}))
+
+function serverTemplate(text) {
+  for (const { template, pattern } of SERVER_PATTERNS) {
+    const match = text.match(pattern)
+    if (match) return { template, values: match.groups }
+  }
+  return null
+}
+
+// One English word can need two translations: 'Cancelled' (a ticket) and
+// 'Cancelled::event'. The part after :: picks one and is never shown.
+const withoutContext = (text) => text.replace(/::[a-z]+$/, '')
+
 // translate('ru', 'Order #{id}', { id: 5 }) -> 'Заказ №5'
 export function translate(language, text, values = {}) {
   if (typeof text !== 'string') return text
   const dictionary = DICTIONARIES[language]
-  const template = dictionary && Object.hasOwn(dictionary, text) ? dictionary[text] : text
+  let template = withoutContext(text)
+  if (dictionary && Object.hasOwn(dictionary, text)) {
+    template = dictionary[text]
+  } else if (dictionary) {
+    const known = serverTemplate(text)
+    if (known) {
+      template = dictionary[known.template]
+      values = known.values
+    }
+  }
   return template.replace(/\{(\w+)\}/g, (placeholder, name) =>
     Object.hasOwn(values, name) ? String(values[name]) : placeholder)
 }
