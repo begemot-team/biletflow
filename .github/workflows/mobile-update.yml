@@ -1,0 +1,44 @@
+name: Publish iOS update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-update.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expo-update-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: expo-update
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A rerun must never publish code from an older main commit.
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm test -- --runInBand
+      - name: Publish iOS update
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx --yes eas-cli@27.11.0 update --channel production --platform ios \
+            --environment production --non-interactive \
+            --message "main $(git rev-parse --short HEAD)"
