@@ -8,6 +8,7 @@ const CATEGORIES = ['music', 'education', 'sports', 'tech', 'arts', 'business', 
 const empty = {
   title: '', date: '', time: '', duration: '2', venue: '', category: '',
   capacity: '100', description: '',
+  registration_opens_at: '', registration_closes_at: '',
 }
 
 // date + time are the browser's local zone; the API needs ISO with an offset.
@@ -17,6 +18,15 @@ function toRange({ date, time, duration }) {
   const end = new Date(start.getTime() + Number(duration) * 60 * 60 * 1000)
   return { starts_at: start.toISOString(), ends_at: end.toISOString() }
 }
+
+// <input type="datetime-local"> holds local wall time without a zone.
+function toLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+const fromLocalInput = (value) => (value ? new Date(value).toISOString() : null)
 
 // Saved event -> form fields, in the browser's local zone (inverse of toRange).
 function toForm(event) {
@@ -31,6 +41,8 @@ function toForm(event) {
     category: event.category,
     capacity: String(event.capacity),
     description: event.description,
+    registration_opens_at: toLocalInput(event.registration_opens_at),
+    registration_closes_at: toLocalInput(event.registration_closes_at),
   }
 }
 
@@ -90,6 +102,8 @@ function CreateEvent() {
       venue: form.venue,
       category: form.category,
       capacity: Number(form.capacity),
+      registration_opens_at: fromLocalInput(form.registration_opens_at),
+      registration_closes_at: fromLocalInput(form.registration_closes_at),
       ...range,
     }
     try {
@@ -160,6 +174,13 @@ function CreateEvent() {
         {/* Not in the wireframe, but capacity is required by POST /events */}
         <Input label="Capacity" name="capacity" type="number" min="1" max="1000000" required
           value={form.capacity} onChange={update} error={errors.capacity} />
+        {/* SRS 4.2: optional; empty means open from publication until the event starts */}
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Registration opens (optional)" name="registration_opens_at" type="datetime-local"
+            value={form.registration_opens_at} onChange={update} error={errors.registration_opens_at} />
+          <Input label="Registration closes (optional)" name="registration_closes_at" type="datetime-local"
+            value={form.registration_closes_at} onChange={update} error={errors.registration_closes_at} />
+        </div>
         <label className="block">
           <span className="text-sm">Description</span>
           <textarea name="description" rows={3} value={form.description} onChange={update}

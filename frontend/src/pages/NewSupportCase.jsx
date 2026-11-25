@@ -4,14 +4,16 @@ import { api, fieldErrors } from '../api/client'
 import { useAuth } from '../auth/auth'
 import { formatMoney } from '../utils/money'
 import { ATTENDEE_CATEGORIES, PLATFORM_CATEGORIES, caseContext } from '../utils/support'
+import { useI18n } from '../i18n/i18n.js'
 
-const dateFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' })
+const DAY = { dateStyle: 'medium' }
 const PLATFORM = 'platform' // "about" value for an organizer's case to the platform
 
 // /support/new?ticket=5 (or ?order= / ?event=) — open a support case
 // (POST /support-cases). Without a link in the URL the user picks one of
 // their orders; organizers may also write to the platform team.
 function NewSupportCase() {
+  const { t, date } = useI18n()
   const { isOrganizer } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -66,63 +68,64 @@ function NewSupportCase() {
     }
   }
 
-  const contextLabel = linked.ticket ? `Ticket #${linked.ticket}` : linked.order ? `Order #${linked.order}` : `Event #${linked.event}`
+  const contextLabel = linked.ticket ? t('Ticket #{id}', { id: linked.ticket })
+    : linked.order ? t('Order #{id}', { id: linked.order }) : t('Event #{id}', { id: linked.event })
 
   return (
     <main className="mx-auto max-w-xl px-6 py-12">
-      <Link to="/support" className="text-sm text-gray-500">← Support</Link>
-      <h1 className="mt-2 text-3xl font-bold">New support case</h1>
+      <Link to="/support" className="text-sm text-gray-500">← {t('Support')}</Link>
+      <h1 className="mt-2 text-3xl font-bold">{t('New support case')}</h1>
       <form onSubmit={onSubmit} className="mt-6 space-y-4 rounded-xl border bg-white p-6" noValidate>
         {hasLink ? (
-          <p>About: <strong>{contextLabel}</strong></p>
+          <p>{t('About:')} <strong>{contextLabel}</strong></p>
         ) : orders === null ? (
-          <p>Loading your orders…</p>
+          <p>{t('Loading your orders…')}</p>
         ) : (
           <label className="block">
-            <span className="text-sm">What is this about?</span>
+            <span className="text-sm">{t('What is this about?')}</span>
             <select value={about} onChange={(e) => { setAbout(e.target.value); setForm({ ...form, category: '' }) }}
               aria-invalid={Boolean(errors.about)} className="mt-1 w-full rounded border bg-white px-3 py-2">
-              <option value="">Choose…</option>
+              <option value="">{t('Choose…')}</option>
               {orders.map((o) => (
                 <option key={o.id} value={o.id}>
-                  Order #{o.id} · {dateFmt.format(new Date(o.created_at))} · {formatMoney(o.total_minor)}
+                  {t('Order #{id}', { id: o.id })} · {date(o.created_at, DAY)} · {t(formatMoney(o.total_minor))}
                 </option>
               ))}
-              {isOrganizer && <option value={PLATFORM}>My organizer account (platform support)</option>}
+              {isOrganizer && <option value={PLATFORM}>{t('My organizer account (platform support)')}</option>}
             </select>
-            {errors.about && <span className="mt-1 block text-sm text-red-600">{errors.about}</span>}
+            {errors.about && <span className="mt-1 block text-sm text-red-600">{t(errors.about)}</span>}
             {orders.length === 0 && !isOrganizer && (
               <span className="mt-1 block text-sm text-gray-600">
-                Cases are opened about an order or ticket, and you have none yet.
+                {t('Cases are opened about an order or ticket, and you have none yet.')}
               </span>
             )}
           </label>
         )}
 
         <label className="block">
-          <span className="text-sm">Category</span>
+          <span className="text-sm">{t('Category')}</span>
           <select name="category" value={form.category} onChange={update} required
             aria-invalid={Boolean(errors.category)} className="mt-1 w-full rounded border bg-white px-3 py-2">
-            <option value="">Choose…</option>
-            {Object.entries(categories).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            <option value="">{t('Choose…')}</option>
+            {Object.entries(categories).map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
           </select>
-          {errors.category && <span className="mt-1 block text-sm text-red-600">{errors.category}</span>}
+          {errors.category && <span className="mt-1 block text-sm text-red-600">{t(errors.category)}</span>}
         </label>
         <label className="block">
-          <span className="text-sm">Subject</span>
+          <span className="text-sm">{t('Subject')}</span>
           <input name="subject" value={form.subject} onChange={update} maxLength={200} required
             aria-invalid={Boolean(errors.subject)} className="mt-1 w-full rounded border px-3 py-2" />
-          {errors.subject && <span className="mt-1 block text-sm text-red-600">{errors.subject}</span>}
+          {errors.subject && <span className="mt-1 block text-sm text-red-600">{t(errors.subject)}</span>}
         </label>
         <label className="block">
-          <span className="text-sm">Message</span>
+          <span className="text-sm">{t('Message')}</span>
           <textarea name="message" value={form.message} onChange={update} maxLength={5000} rows={5} required
             aria-invalid={Boolean(errors.message)} className="mt-1 w-full rounded border px-3 py-2" />
-          {errors.message && <span className="mt-1 block text-sm text-red-600">{errors.message}</span>}
+          {errors.message && <span className="mt-1 block text-sm text-red-600">{t(errors.message)}</span>}
         </label>
-        {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
+        {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
         <button disabled={submitting} className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
-          {submitting ? 'Sending…' : 'Open case'}
+          {submitting ? t('Sending…') : t('Open case')}
         </button>
       </form>
     </main>

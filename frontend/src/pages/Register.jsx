@@ -3,8 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { api, fieldErrors } from '../api/client'
 import { useAuth } from '../auth/auth'
 import AuthCard, { Field } from '../components/AuthCard'
+import { useI18n } from '../i18n/i18n.js'
 
 function Register() {
+  const { t } = useI18n()
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -49,34 +51,34 @@ function Register() {
 
   return (
     <AuthCard
-      title="Register"
+      title={t('Register')}
       footer={
         <>
-          Already have an account?{' '}
+          {t('Already have an account?')}{' '}
           <Link to="/login" state={location.state} className="text-indigo-600 underline">
-            Login
+            {t('Login')}
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-5" noValidate>
-        <Field label="Name" name="name" autoComplete="name" required
+        <Field label={t('Name')} name="name" autoComplete="name" required
           value={form.name} onChange={update} error={errors.name} />
         {form.organizer && (
-          <Field label="Phone" name="phone" type="tel" autoComplete="tel"
+          <Field label={t('Phone')} name="phone" type="tel" autoComplete="tel"
             value={form.phone} onChange={update} error={errors.phone} />
         )}
-        <Field label="Email" name="email" type="email" autoComplete="email" required
+        <Field label={t('Email')} name="email" type="email" autoComplete="email" required
           value={form.email} onChange={update} error={errors.email} />
-        <Field label="Password" name="password" type="password" autoComplete="new-password" required
+        <Field label={t('Password')} name="password" type="password" autoComplete="new-password" required
           value={form.password} onChange={update} error={errors.password} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="organizer" checked={form.organizer} onChange={update} />
-          I want to organize events
+          {t('I want to organize events')}
         </label>
-        {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={submitting} className="w-full rounded bg-gray-200 py-2.5 text-lg disabled:opacity-50">
-          {submitting ? 'Creating account…' : 'Register'}
+        {errors.form && <p role="alert" className="text-sm text-red-600">{t(errors.form)}</p>}
+        <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
+          {submitting ? t('Creating account…') : t('Register')}
         </button>
       </form>
     </AuthCard>

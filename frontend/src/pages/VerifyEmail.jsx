@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { api, session } from '../api/client'
 import AuthCard from '../components/AuthCard'
+import { useI18n } from '../i18n/i18n.js'
 
 export default function VerifyEmail() {
+  const { t } = useI18n()
   const { hash } = useLocation()
   const params = new URLSearchParams(hash.slice(1))
   const uid = params.get('uid')
@@ -30,18 +32,18 @@ export default function VerifyEmail() {
   }
 
   return (
-    <AuthCard title={verified ? 'Email verified' : 'Verify your email'}
-      footer={<Link to="/account" className="text-indigo-600 underline">Go to my account</Link>}>
+    <AuthCard title={verified ? t('Email verified') : t('Verify your email')}
+      footer={<Link to="/account" className="text-indigo-600 underline">{t('Go to my account')}</Link>}>
       {verified ? (
-        <p role="status">Your email address is verified.</p>
+        <p role="status">{t('Your email address is verified.')}</p>
       ) : !uid || !token ? (
-        <p role="alert">Open the link from your verification email or request a new link from your account.</p>
+        <p role="alert">{t('Open the link from your verification email or request a new link from your account.')}</p>
       ) : (
         <form onSubmit={verify} className="space-y-4">
-          <p>Confirm the email address for your BiletFlow account.</p>
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          <p>{t('Confirm the email address for your BiletFlow account.')}</p>
+          {error && <p role="alert" className="text-sm text-red-600">{t(error)}</p>}
           <button disabled={verifying} className="w-full rounded bg-black py-2.5 text-white disabled:opacity-50">
-            {verifying ? 'Verifying…' : 'Verify email'}
+            {verifying ? t('Verifying…') : t('Verify email')}
           </button>
         </form>
       )}

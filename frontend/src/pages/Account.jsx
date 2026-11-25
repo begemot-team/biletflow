@@ -4,14 +4,16 @@ import { api, session } from '../api/client'
 import { useAuth } from '../auth/auth'
 import { formatMoney } from '../utils/money'
 import { ORDER_STATUS, attendeeCanCancel } from '../utils/orders'
+import { useI18n } from '../i18n/i18n.js'
 
-const dateFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 
 const TICKET_STATUS = { valid: 'Valid', checked_in: 'Checked in', cancelled: 'Cancelled', refunded: 'Refunded' }
 
 // /account — the attendee's tickets and orders (first page of each).
 
 function Account() {
+  const { t, date } = useI18n()
   const { user } = useAuth()
   const [tickets, setTickets] = useState(null)
   const [orders, setOrders] = useState(null)
@@ -67,38 +69,38 @@ function Account() {
     }
   }
 
-  const title = (eventId) => events[eventId] ?? `Event #${eventId}`
+  const title = (eventId) => events[eventId] ?? t('Event #{id}', { id: eventId })
   const pending = orders?.filter((o) => o.status === 'pending') ?? []
 
-  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{error}</p>
-  if (tickets === null) return <p className="mx-auto max-w-3xl px-6 py-20">Loading…</p>
+  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{t(error)}</p>
+  if (tickets === null) return <p className="mx-auto max-w-3xl px-6 py-20">{t('Loading…')}</p>
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-3xl font-bold">My tickets</h1>
+      <h1 className="text-3xl font-bold">{t('My Tickets')}</h1>
 
       {user?.email_verified === false && (
         <section className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <h2 className="font-semibold">Verify your email</h2>
-          <p className="mt-1 text-sm">Open the confirmation link sent to {user.email}.</p>
+          <h2 className="font-semibold">{t('Verify your email')}</h2>
+          <p className="mt-1 text-sm">{t('Open the confirmation link sent to {email}.', { email: user.email })}</p>
           <button type="button" onClick={resendVerification} disabled={sendingVerification}
             className="mt-2 text-indigo-600 underline disabled:opacity-50">
-            {sendingVerification ? 'Requesting…' : 'Send another link'}
+            {sendingVerification ? t('Requesting…') : t('Send another link')}
           </button>
           {verificationNotice && <p role={verificationNotice.error ? 'alert' : 'status'} className="mt-2 text-sm">
-            {verificationNotice.message}
+            {t(verificationNotice.message)}
           </p>}
         </section>
       )}
 
       {pending.length > 0 && (
         <section className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4">
-          <h2 className="font-semibold">Unfinished orders</h2>
+          <h2 className="font-semibold">{t('Unfinished orders')}</h2>
           <ul className="mt-2 space-y-1">
             {pending.map((o) => (
               <li key={o.id}>
-                {title(o.event)} · reserved until {dateFmt.format(new Date(o.expires_at))} ·{' '}
-                <Link to={`/checkout/${o.id}`} className="text-indigo-600 underline">Continue checkout</Link>
+                {title(o.event)} · {t('reserved until {date}', { date: date(o.expires_at, SHORT) })} ·{' '}
+                <Link to={`/checkout/${o.id}`} className="text-indigo-600 underline">{t('Continue checkout')}</Link>
               </li>
             ))}
           </ul>
@@ -107,37 +109,37 @@ function Account() {
 
       {tickets.length === 0 ? (
         <p className="mt-6 text-gray-600">
-          You have no tickets yet. <Link to="/" className="text-indigo-600 underline">Find an event</Link>
+          {t('You have no tickets yet.')} <Link to="/" className="text-indigo-600 underline">{t('Find an event')}</Link>
         </p>
       ) : (
         <ul className="mt-6 divide-y rounded-xl border bg-white">
-          {tickets.map((t) => (
-            <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
+          {tickets.map((ticket) => (
+            <li key={ticket.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
               <span>
-                <strong>{title(t.event)}</strong>
+                <strong>{title(ticket.event)}</strong>
                 <span className="block text-sm text-gray-600">
-                  Ticket #{t.id} · {TICKET_STATUS[t.status] ?? t.status}
+                  {t('Ticket #{id}', { id: ticket.id })} · {t(TICKET_STATUS[ticket.status] ?? ticket.status)}
                 </span>
               </span>
-              <Link to={`/tickets/${t.id}`} className="text-indigo-600 underline">Show QR</Link>
+              <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 underline">{t('Show QR')}</Link>
             </li>
           ))}
         </ul>
       )}
 
-      <h2 className="mt-10 text-xl font-semibold">Orders</h2>
-      {orderError && <p role="alert" className="mt-2 text-red-600">{orderError}</p>}
-      {orders.length === 0 ? <p className="mt-2 text-gray-600">No orders yet.</p> : (
+      <h2 className="mt-10 text-xl font-semibold">{t('Orders')}</h2>
+      {orderError && <p role="alert" className="mt-2 text-red-600">{t(orderError)}</p>}
+      {orders.length === 0 ? <p className="mt-2 text-gray-600">{t('No orders yet.')}</p> : (
         <ul className="mt-3 divide-y rounded-xl border bg-white text-sm">
           {orders.map((o) => (
             <li key={o.id} className="flex flex-wrap justify-between gap-2 p-3">
-              <span>#{o.id} · {title(o.event)} · {dateFmt.format(new Date(o.created_at))}</span>
+              <span>#{o.id} · {title(o.event)} · {date(o.created_at, SHORT)}</span>
               <span>
-                {ORDER_STATUS[o.status] ?? o.status} · {formatMoney(o.total_minor)}
+                {t(ORDER_STATUS[o.status] ?? o.status)} · {t(formatMoney(o.total_minor))}
                 {o.status !== 'pending' && (
                   <>
                     {' · '}
-                    <Link to={`/support/new?order=${o.id}`} className="text-indigo-600 underline">Get help</Link>
+                    <Link to={`/support/new?order=${o.id}`} className="text-indigo-600 underline">{t('Get help')}</Link>
                   </>
                 )}
                 {attendeeCanCancel(o) && (
@@ -145,16 +147,16 @@ function Account() {
                     <>
                       {' · '}
                       <button type="button" onClick={() => cancelRegistration(o)} className="text-red-700 underline">
-                        Yes, cancel and free my seat
+                        {t('Yes, cancel and free my seat')}
                       </button>
                       {' · '}
-                      <button type="button" onClick={() => setConfirming(null)} className="underline">Keep</button>
+                      <button type="button" onClick={() => setConfirming(null)} className="underline">{t('Keep')}</button>
                     </>
                   ) : (
                     <>
                       {' · '}
                       <button type="button" onClick={() => setConfirming(o.id)} className="text-red-700 underline">
-                        Cancel registration
+                        {t('Cancel registration')}
                       </button>
                     </>
                   )

@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { api } from '../api/client'
-import { formatMoney } from '../utils/money'
+import { api, fieldErrors } from '../api/client'
+import { formatAmount, formatMoney } from '../utils/money'
 import { attendeesPayload, holderKeys } from '../utils/attendees'
+import { useI18n } from '../i18n/i18n.js'
 
 const preview = (orderId, code) =>
   api(`/orders/${orderId}/preview`, { method: 'POST', body: code ? { promo_code: code } : {} })
 
 // Message for a rejected promo code. 409 also covers "redemption limit reached";
 // callers re-read the order when a 409 might mean it expired instead.
-const promoError = (err) => err.body?.promo_code?.[0] ?? (err.status === 409 ? err.message : null)
+// The API sends promo_code as a plain string or as a list, fieldErrors reads both.
+const promoError = (err) => fieldErrors(err).promo_code ?? (err.status === 409 ? err.message : null)
 
 function Countdown({ until, onExpire }) {
   const [now, setNow] = useState(() => Date.now())
@@ -33,6 +35,7 @@ function Countdown({ until, onExpire }) {
 
 // /checkout/:orderId — server-side totals, promo code, simulated payment.
 function Checkout() {
+  const { t } = useI18n()
   const { orderId } = useParams()
   const [searchParams] = useSearchParams()
   const [order, setOrder] = useState(null)
@@ -145,23 +148,23 @@ function Checkout() {
     setOrder(await api(`/orders/${orderId}/cancel`, { method: 'POST' }))
   })
 
-  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{error}</p>
-  if (!order) return <p className="mx-auto max-w-3xl px-6 py-20">Loading…</p>
+  if (error) return <p role="alert" className="mx-auto max-w-3xl px-6 py-20">{t(error)}</p>
+  if (!order) return <p className="mx-auto max-w-3xl px-6 py-20">{t('Loading…')}</p>
 
-  const eventLink = <Link to={`/events/${order.event}`} className="text-indigo-600 underline">Back to the event</Link>
+  const eventLink = <Link to={`/events/${order.event}`} className="text-indigo-600 underline">{t('Back to the event')}</Link>
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-bold">Checkout</h1>
+      <h1 className="text-3xl font-bold">{t('Checkout')}</h1>
       <p className="mt-2 text-gray-600">
-        Order #{order.id}{event && <> · {event.title}</>}
+        {t('Order #{id}', { id: order.id })}{event && <> · {event.title}</>}
       </p>
 
       <ul className="mt-6 divide-y rounded-xl border bg-white">
         {order.items.map((item) => (
           <li key={item.ticket_type} className="flex justify-between p-4">
-            <span>{names[item.ticket_type] ?? `Ticket type #${item.ticket_type}`} × {item.quantity}</span>
-            <span>{formatMoney(item.unit_price_minor * item.quantity)}</span>
+            <span>{names[item.ticket_type] ?? t('Ticket type #{id}', { id: item.ticket_type })} × {item.quantity}</span>
+            <span>{t(formatMoney(item.unit_price_minor * item.quantity))}</span>
           </li>
         ))}
       </ul>
@@ -169,37 +172,37 @@ function Checkout() {
       {order.status === 'pending' && (
         <>
           <p className="mt-4 text-sm text-gray-600">
-            Tickets are reserved for{' '}
+            {t('Tickets are reserved for')}{' '}
             <Countdown until={order.expires_at} onExpire={() => { reload().catch(() => {}) }} />
           </p>
 
           <form onSubmit={applyCode} className="mt-6 flex items-end gap-3">
             <label className="flex-1">
-              <span className="text-sm">Promo code</span>
+              <span className="text-sm">{t('Promo code')}</span>
               <input value={code} onChange={(e) => setCode(e.target.value)} maxLength={32} autoComplete="off"
                 className="mt-1 w-full rounded border px-3 py-2 uppercase" />
             </label>
-            <button disabled={busy} className="rounded border px-4 py-2 disabled:opacity-50">Apply</button>
+            <button disabled={busy} className="rounded border px-4 py-2 disabled:opacity-50">{t('Apply')}</button>
           </form>
-          {promoMessage && <p role="alert" className="mt-2 text-sm text-red-600">{promoMessage}</p>}
-          {applied && !promoMessage && <p className="mt-2 text-sm text-green-700">Code {applied.toUpperCase()} applied.</p>}
+          {promoMessage && <p role="alert" className="mt-2 text-sm text-red-600">{t(promoMessage)}</p>}
+          {applied && !promoMessage && <p className="mt-2 text-sm text-green-700">{t('Code {code} applied.', { code: applied.toUpperCase() })}</p>}
 
           {quote && (
             <dl className="mt-6 space-y-1" aria-live="polite">
-              <div className="flex justify-between"><dt>Subtotal</dt><dd>{formatMoney(quote.subtotal_minor)}</dd></div>
-              <div className="flex justify-between"><dt>Discount</dt><dd>−{formatMoney(quote.discount_minor)}</dd></div>
+              <div className="flex justify-between"><dt>{t('Subtotal')}</dt><dd>{t(formatMoney(quote.subtotal_minor))}</dd></div>
+              <div className="flex justify-between"><dt>{t('Discount')}</dt><dd>−{formatAmount(quote.discount_minor)}</dd></div>
               <div className="flex justify-between text-lg font-semibold">
-                <dt>Total</dt><dd>{formatMoney(quote.total_minor)}</dd>
+                <dt>{t('Total')}</dt><dd>{t(formatMoney(quote.total_minor))}</dd>
               </div>
             </dl>
           )}
 
           <fieldset className="mt-6">
-            <legend className="text-sm font-medium">Name on each ticket</legend>
-            <p className="text-xs text-gray-500">Optional. Leave blank for tickets you will use yourself.</p>
+            <legend className="text-sm font-medium">{t('Name on each ticket')}</legend>
+            <p className="text-xs text-gray-500">{t('Optional. Leave blank for tickets you will use yourself.')}</p>
             {holderKeys(order.items).map(({ key, ticketType, n }) => (
               <label key={key} className="mt-2 block">
-                <span className="text-sm">{names[ticketType] ?? 'Ticket'} {n + 1}</span>
+                <span className="text-sm">{names[ticketType] ?? t('Ticket')} {n + 1}</span>
                 <input value={holders[key] ?? ''} maxLength={200} autoComplete="name"
                   onChange={(e) => setHolders((known) => ({ ...known, [key]: e.target.value }))}
                   className="mt-1 w-full rounded border px-3 py-2" />
@@ -207,50 +210,50 @@ function Checkout() {
             ))}
           </fieldset>
 
-          {message && <p role="alert" className="mt-4 text-sm text-red-600">{message}</p>}
+          {message && <p role="alert" className="mt-4 text-sm text-red-600">{t(message)}</p>}
           <div className="mt-6 flex flex-wrap gap-3">
             <button type="button" disabled={busy || !quote} onClick={() => pay('success')}
               className="rounded bg-black px-5 py-2 text-white disabled:opacity-50">
-              {quote?.total_minor === 0 ? 'Get tickets' : 'Pay (test payment)'}
+              {quote?.total_minor === 0 ? t('Get tickets') : t('Pay (test payment)')}
             </button>
             <button type="button" disabled={busy || !quote} onClick={() => pay('failure')}
               className="rounded border px-4 py-2 disabled:opacity-50">
-              Simulate declined payment
+              {t('Simulate declined payment')}
             </button>
             <button type="button" disabled={busy} onClick={cancel}
               className="px-2 py-2 text-red-700 disabled:opacity-50">
-              Cancel reservation
+              {t('Cancel reservation')}
             </button>
           </div>
           <p className="mt-3 text-xs text-gray-500">
-            This is a simulated payment: no card details are collected and no money is charged.
+            {t('This is a simulated payment: no card details are collected and no money is charged.')}
           </p>
         </>
       )}
 
       {order.status === 'confirmed' && (
         <section className="mt-8" aria-live="polite">
-          <h2 className="text-xl font-semibold text-green-700">Payment complete. Your tickets:</h2>
-          <p className="mt-1 text-sm text-gray-600">Paid {formatMoney(order.total_minor)}</p>
+          <h2 className="text-xl font-semibold text-green-700">{t('Payment complete. Your tickets:')}</h2>
+          <p className="mt-1 text-sm text-gray-600">{t('Paid: {amount}', { amount: formatAmount(order.total_minor) })}</p>
           <ul className="mt-3 divide-y rounded-xl border bg-white">
             {order.tickets.map((ticket) => (
               <li key={ticket.id} className="flex justify-between p-4">
-                <span>{names[ticket.ticket_type] ?? 'Ticket'} #{ticket.id} · {ticket.attendee_name}</span>
-                <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 underline">Show QR</Link>
+                <span>{names[ticket.ticket_type] ?? t('Ticket')} #{ticket.id} · {ticket.attendee_name}</span>
+                <Link to={`/tickets/${ticket.id}`} className="text-indigo-600 underline">{t('Show QR')}</Link>
               </li>
             ))}
           </ul>
-          <Link to="/account" className="mt-4 inline-block text-indigo-600 underline">All my tickets</Link>
+          <Link to="/account" className="mt-4 inline-block text-indigo-600 underline">{t('All my tickets')}</Link>
         </section>
       )}
 
       {order.status === 'expired' && (
-        <p className="mt-8">The reservation has expired and the tickets were released. {eventLink}</p>
+        <p className="mt-8">{t('The reservation has expired and the tickets were released.')} {eventLink}</p>
       )}
       {order.status === 'cancelled' && (
-        <p className="mt-8">This order was cancelled. {eventLink}</p>
+        <p className="mt-8">{t('This order was cancelled.')} {eventLink}</p>
       )}
-      {order.status === 'refunded' && <p className="mt-8">This order was refunded.</p>}
+      {order.status === 'refunded' && <p className="mt-8">{t('This order was refunded.')}</p>}
     </main>
   )
 }
