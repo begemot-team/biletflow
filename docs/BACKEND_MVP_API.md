@@ -587,3 +587,52 @@ been deployed. Production requires a private key, TLS, production WSGI server,
 explicit hosts, shared throttling and database backups. Keep API and frontend
 on the same origin via a proxy, or configure an explicit CORS allowlist during
 frontend integration. Django admin retains its own session authentication.
+
+## Platform-admin back office (SRS 4.12)
+
+All endpoints below are for platform admins only (`is_superuser`; others get 403),
+except `POST /events/{id}/report`. Money values are in tiyn (`*_minor`, KZT) and
+every payment is simulated (SRS 3.2). Code: `backend/ticketing/admin_views.py`.
+
+| Endpoint | Purpose |
+|---|---|
+| GET `/admin/summary` | Counts for the dashboard: orders, payments, payment failures, refunds, open disputes, open event reports |
+| GET `/admin/orders` | Search all orders on the platform |
+| GET `/admin/payments` | Search all simulated payments; `status=paid\|refunded` |
+| GET `/admin/payment-failures` | Failed checkouts (`kind: checkout`) and failed activation fees (`kind: activation_fee`), from the audit log |
+| GET `/admin/refunds` | Every refund, with who issued it |
+| GET `/admin/disputes` | Support cases in category `payment` or `refund`; `status=` any support-case status |
+| GET `/admin/event-reports` | Reported events; `status=open\|reviewed\|dismissed` |
+| PATCH `/admin/event-reports/{id}` | `{status, resolution_note?}`; `reviewed`/`dismissed` records the admin and time, `open` reopens. To act on the event, use `POST /admin/events/{id}/suspend` |
+| POST `/events/{id}/report` | Any signed-in user who can see the event: `{reason: fraud\|misleading\|inappropriate\|safety\|other, details?}` → 201. 409 if they already have an open report for it, 400 for the organizer's own event |
+| GET/PATCH `/admin/settings` | Activation fee and processing fee (see below) |
+| GET `/admin/exports/{name}` | CSV download of a list: `orders`, `payments`, `payment-failures`, `refunds`, `disputes`, `activations`, `event-reports` |
+
+**Lists** are paginated like the rest of the API (`count`, `next`, `previous`,
+`results`, 20 per page, `?page=`). They all accept `date_from` / `date_to`
+(`YYYY-MM-DD`, on `created_at`) and `event={id}`. `orders` and `payments` also take
+`q`: matches the purchaser email or event title (contains, case-insensitive), an
+order id (digits), or a payment reference (UUID). `orders` takes
+`status=pending|confirmed|cancelled|refunded`. An unknown `status` returns 400.
+
+**Disputes.** Payments are simulated, so there are no card chargebacks. A dispute is
+a support case about a payment or a refund (SRS 4.13); the admin handles it through
+the support-case API.
+
+**Settings.** `GET /admin/settings` returns the values in force:
+
+```json
+{"activation_fee_minor": 500000, "processing_fee_bps": 300, "currency": "KZT",
+ "overridden": {"activation_fee_minor": false, "processing_fee_bps": false},
+ "updated_by_email": null, "updated_at": null, "simulated": true}
+```
+
+`PATCH` with either field changes it (`activation_fee_minor` 0–100 000 000,
+`processing_fee_bps` 0–10 000, i.e. up to 100%); `null` goes back to the deployment
+default from the `PAID_SALES_ACTIVATION_FEE_MINOR` / `PROCESSING_FEE_BPS` config
+vars. A new activation fee applies to activations paid after the change, and a new
+processing fee to payments made after it; earlier records keep what they were charged.
+
+**Exports** take the same filters as the lists, are not paginated, and are UTF-8
+with a byte-order mark so Excel shows Cyrillic event titles correctly. Columns are
+the same fields the JSON list returns.
