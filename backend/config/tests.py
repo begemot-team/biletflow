@@ -53,6 +53,19 @@ class FrontendAppTests(TestCase):
                     self.assertIn(b"id=root", b"".join(response.streaming_content))
                 self.assertEqual(self.client.get("/api/unknown").status_code, 404)
 
+    def test_scanner_routes_serve_the_expo_entry_point(self):
+        with tempfile.TemporaryDirectory() as dist:
+            scanner = Path(dist, "scanner")
+            scanner.mkdir()
+            scanner.joinpath("index.html").write_text("<div id=scanner></div>")
+            with override_settings(FRONTEND_DIST=Path(dist)):
+                for path in ("/scanner", "/scanner/"):
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 200, path)
+                    self.assertEqual(response["Cache-Control"], "no-cache")
+                    self.assertIn(b"id=scanner", b"".join(response.streaming_content))
+                self.assertEqual(self.client.get("/scanner/missing.js").status_code, 404)
+
     def test_without_a_build_app_routes_are_404(self):
         with override_settings(FRONTEND_DIST=Path("/nonexistent")):
             self.assertEqual(self.client.get("/events/5").status_code, 404)

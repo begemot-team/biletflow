@@ -33,9 +33,9 @@ urlpatterns += [
 ]
 
 
-def frontend_app(request):
-    """Every other path belongs to the React app: serve its index.html (production)."""
-    index = settings.FRONTEND_DIST / "index.html"
+def frontend_app(request, entrypoint="index.html"):
+    """Serve the requested web client's production entry point."""
+    index = settings.FRONTEND_DIST / entrypoint
     if not index.is_file():
         raise Http404("Frontend build not found; in development use the Vite server.")
     response = FileResponse(index.open("rb"), content_type="text/html")
@@ -43,4 +43,7 @@ def frontend_app(request):
     return response
 
 
-urlpatterns += [re_path(r"^(?!api/|django-admin/|static/).*$", frontend_app)]
+urlpatterns += [
+    re_path(r"^scanner/?$", frontend_app, {"entrypoint": "scanner/index.html"}),
+    re_path(r"^(?!api/|django-admin/|static/|scanner/).*$", frontend_app),
+]

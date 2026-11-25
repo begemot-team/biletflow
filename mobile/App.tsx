@@ -28,6 +28,7 @@ const MOCK_ASSIGNED_EVENTS: AssignedEvent[] = [
 ];
 
 const DEV_BYPASS_TOKEN = 'dev-bypass-token-123';
+const canUseDevBypass = __DEV__ || Platform.OS !== 'web';
 
 function formatEventDate(raw: any): string {
   const value = raw?.starts_at || raw?.date;
@@ -138,7 +139,7 @@ export default function App() {
         showAlert('Login Failed', data.detail || data.message || 'Invalid credentials');
       }
     } catch (err) {
-      showAlert('Network Error', 'Could not reach server. Use "Dev Bypass Login" below to test navigation.');
+      showAlert('Network Error', 'Could not reach server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -281,9 +282,11 @@ export default function App() {
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.devButton} onPress={handleDevBypass}>
-        <Text style={styles.devButtonText}>⚡ Dev Bypass Login (Test Navigation)</Text>
-      </TouchableOpacity>
+      {canUseDevBypass && (
+        <TouchableOpacity style={styles.devButton} onPress={handleDevBypass}>
+          <Text style={styles.devButtonText}>⚡ Dev Bypass Login (Test Navigation)</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
