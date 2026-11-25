@@ -17,7 +17,7 @@ const isWorkspace = screens.some(([route]) => route === path)
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {isCampaign ? <CampaignPortal /> : isAdmin ? <AdminPortal /> : isWorkspace ? <MiratWorkspace path={path} /> : (
+    {isCampaign ? <LanguageProvider><CampaignPortal /></LanguageProvider> : isAdmin ? <AdminPortal /> : isWorkspace ? <MiratWorkspace path={path} /> : (
       <BrowserRouter>
         <LanguageProvider>
           <AuthProvider>

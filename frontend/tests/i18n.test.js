@@ -66,20 +66,27 @@ test('labels and form errors shown to organizers are translated', () => {
   for (const label of labels) assert.ok(Object.hasOwn(ru, label), label)
 })
 
+test('campaign portal errors are translated', () => {
+  const code = readFileSync(new URL('../src/mirat/campaignApi.js', import.meta.url), 'utf8')
+  const messages = [...code.matchAll(/(?:Error\(|[?:] |\|\| )'([A-Z][^']+\.)'/g)].map((match) => match[1])
+  assert.ok(messages.length >= 16)
+  messages.push('Could not confirm that the campaign was created.', 'You are logged out on this device; the server did not confirm ending the session.')
+  for (const message of messages) assert.ok(Object.hasOwn(ru, message), message)
+})
+
 test('pages have no text or date format that ignores the language', () => {
-  const names = new Set(['Begemot.com', 'Google Calendar ↗', 'SIM-PAYOUT-1'])
-  const folders = ['pages', 'components', 'auth']
-  const left = folders.flatMap((folder) => {
-    const root = new URL(`../src/${folder}/`, import.meta.url)
-    return readdirSync(root).filter((name) => name.endsWith('.jsx')).flatMap((name) => {
-      const code = readFileSync(new URL(name, root), 'utf8')
-      const texts = [
-        ...code.matchAll(/(?<!=)>([^<>{}=;()]*\p{L}{2}[^<>{}=;()]*)<\//gu), // <p>Text</p>
-        ...code.matchAll(/\b(?:label|detail|placeholder|aria-label|title|alt)="([^"]*\p{L}{2}[^"]*)"/gu),
-        ...code.matchAll(/(DateTimeFormat\(['"]|toLocale\w*String\()/g),
-      ]
-      return texts.map((match) => match[1].trim()).filter((text) => !names.has(text)).map((text) => `${name}: ${text}`)
-    })
+  const names = new Set(['Begemot.com', 'Google Calendar ↗', 'SIM-PAYOUT-1', 'Campaign QR', 'biletflow'])
+  const root = new URL('../src/', import.meta.url)
+  const files = ['pages', 'components', 'auth'].flatMap((folder) =>
+    readdirSync(new URL(`${folder}/`, root)).filter((name) => name.endsWith('.jsx')).map((name) => `${folder}/${name}`))
+  const left = [...files, 'mirat/CampaignPortal.jsx'].flatMap((name) => {
+    const code = readFileSync(new URL(name, root), 'utf8')
+    const texts = [
+      ...code.matchAll(/(?<!=)>([^<>{}=;()]*\p{L}{2}[^<>{}=;()]*)<\//gu), // <p>Text</p>
+      ...code.matchAll(/\b(?:label|detail|placeholder|aria-label|title|alt)="([^"]*\p{L}{2}[^"]*)"/gu),
+      ...code.matchAll(/(DateTimeFormat\(['"]|toLocale\w*String\()/g),
+    ]
+    return texts.map((match) => match[1].trim()).filter((text) => !names.has(text)).map((text) => `${name}: ${text}`)
   })
   assert.deepEqual(left, [])
 })
