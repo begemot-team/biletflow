@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { translate } from '../src/i18n/translate.js'
 import { actionPath, attendeeCanCancel, confirmText } from '../src/utils/orders.js'
 
 test('actionPath follows the action the API allows', () => {
@@ -10,8 +11,16 @@ test('actionPath follows the action the API allows', () => {
 })
 
 test('confirmText names the amount and the tickets', () => {
-  assert.match(confirmText({ action: 'refund', total_minor: 1440000, tickets: 2 }), /Refund 14\s?400,00.*2 tickets/)
-  assert.match(confirmText({ action: 'cancel', total_minor: 0, tickets: 1 }), /registration.*1 ticket\?/)
+  const shown = (order, language = 'en') => {
+    const { text, values } = confirmText(order)
+    return translate(language, text, values)
+  }
+  const refund = { action: 'refund', total_minor: 1440000, tickets: 2 }
+  assert.match(shown(refund), /Refund 14\s?400,00.*2 tickets/)
+  assert.match(shown(refund, 'ru'), /Вернуть 14\s?400,00.*билеты \(2\)/)
+  assert.match(shown({ ...refund, tickets: 1 }), /Refund 14\s?400,00.*1 ticket\?/)
+  assert.match(shown({ action: 'cancel', total_minor: 0, tickets: 1 }), /registration.*1 ticket\?/)
+  assert.match(shown({ action: 'cancel', total_minor: 0, tickets: 3 }), /registration.*3 tickets\?/)
 })
 
 test('attendeeCanCancel only for confirmed orders that cost nothing', () => {

@@ -30,7 +30,8 @@ function describe(status, body) {
 
 const isPair = (value) => typeof value?.access === 'string' && typeof value?.refresh === 'string'
 
-export function createSession({ storage, key, request = fetch, timeout = 15000 }) {
+// language() picks the language of Django's own messages ("This field is required.").
+export function createSession({ storage, key, request = fetch, timeout = 15000, language }) {
   let tokens = null // { access, refresh }
   let user = null
   let generation = 0 // bumped on login/logout: late answers for an old session are ignored
@@ -64,6 +65,7 @@ export function createSession({ storage, key, request = fetch, timeout = 15000 }
     const headers = {}
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     if (access) headers.Authorization = `Bearer ${access}`
+    if (language) headers['Accept-Language'] = language()
     try {
       return await request(`/api${path}`, {
         method,

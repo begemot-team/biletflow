@@ -26,7 +26,7 @@ function toAuthError(error) {
 // (api/session.js); this module adds the platform-admin role check.
 // The session is shared with the main site, so signing out here signs out there too.
 export function createAdminAuth(storage, request = fetch) {
-  const session = createSession({ storage, key: KEY, request })
+  const session = createSession({ storage, key: KEY, request, language: () => 'ru' }) // the admin portal is in Russian
   let restoring = null
 
   async function logout() {

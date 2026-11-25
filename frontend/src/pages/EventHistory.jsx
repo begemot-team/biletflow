@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api/client.js'
 import { allPages } from '../api/pages.js'
-import { ACTIVITY_LABELS, actionLabel, eventStatus, statusLabel } from '../utils/eventHistory.js'
+import { ACTIVITY_LABELS, actionLabel, auditDescription, entityLabel, eventStatus, statusLabel } from '../utils/eventHistory.js'
+import { useI18n } from '../i18n/i18n.js'
 
-const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
-const auditDateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Almaty' })
+const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
+const ALMATY = { ...SHORT, timeZone: 'Asia/Almaty' }
 const statuses = ['all', 'draft', 'upcoming', 'active', 'completed', 'cancelled', 'suspended']
 
 const badge = {
@@ -18,6 +19,7 @@ const badge = {
 }
 
 function AuditEntries({ eventId, query }) {
+  const { t, date } = useI18n()
   const [entries, setEntries] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -53,29 +55,30 @@ function AuditEntries({ eventId, query }) {
 
   return (
     <>
-      {error && <p role="alert" className="mt-4 text-red-700">{error}</p>}
-      {entries === null && !error && <p className="mt-4">Loading activity…</p>}
-      {entries?.length === 0 && <p className="mt-4 text-gray-600">No activity matches these filters.</p>}
+      {error && <p role="alert" className="mt-4 text-red-700">{t(error)}</p>}
+      {entries === null && !error && <p className="mt-4">{t('Loading activity…')}</p>}
+      {entries?.length === 0 && <p className="mt-4 text-gray-600">{t('No activity matches these filters.')}</p>}
       {entries?.length > 0 && (
         <ol className="mt-4 space-y-3 border-l-2 border-gray-200 pl-5">
           {entries.map((entry) => (
             <li className="relative rounded-xl border bg-white p-4 before:absolute before:-left-[1.7rem] before:top-5 before:h-3 before:w-3 before:rounded-full before:bg-brand-600" key={entry.id}>
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <strong>{actionLabel(entry.action)}</strong>
-                <time className="text-xs text-gray-500" dateTime={entry.created_at}>{auditDateTime.format(new Date(entry.created_at))}</time>
+                <strong>{t(actionLabel(entry.action))}</strong>
+                <time className="text-xs text-gray-500" dateTime={entry.created_at}>{date(entry.created_at, ALMATY)}</time>
               </div>
-              {entry.description && <p className="mt-1 text-sm text-gray-700">{entry.description}</p>}
-              <p className="mt-2 text-xs text-gray-500">{entry.actor ? `Actor #${entry.actor}` : 'System'} · {entry.entity_type} #{entry.entity_id}</p>
+              {entry.description && <p className="mt-1 text-sm text-gray-700">{auditDescription(entry, t)}</p>}
+              <p className="mt-2 text-xs text-gray-500">{entry.actor ? t('Actor #{id}', { id: entry.actor }) : t('System')} · {entityLabel(entry, t)}</p>
             </li>
           ))}
         </ol>
       )}
-      {hasMore && <button className="mt-4 rounded border px-4 py-2" disabled={loadingMore} onClick={loadMore}>{loadingMore ? 'Loading…' : 'Load older activity'}</button>}
+      {hasMore && <button className="mt-4 rounded border px-4 py-2" disabled={loadingMore} onClick={loadMore}>{loadingMore ? t('Loading…') : t('Load older activity')}</button>}
     </>
   )
 }
 
 function EventActivity({ event }) {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [duplicating, setDuplicating] = useState(false)
@@ -107,30 +110,30 @@ function EventActivity({ event }) {
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h2 className="text-xl font-semibold">Activity · {event.title}</h2><p className="text-sm text-gray-600">Newest first · Almaty time</p></div>
+        <div><h2 className="text-xl font-semibold">{t('Activity')} · {event.title}</h2><p className="text-sm text-gray-600">{t('Newest first · Almaty time')}</p></div>
         <div className="flex flex-wrap gap-3">
-          <Link to={`/organizer/events/${event.id}`} className="text-brand-700 underline">Open event</Link>
+          <Link to={`/organizer/events/${event.id}`} className="text-brand-700 underline">{t('Open event')}</Link>
           {canDuplicate && <button type="button" disabled={duplicating} onClick={duplicate} className="text-brand-700 underline disabled:opacity-50">
-            {duplicating ? 'Duplicating…' : 'Duplicate as draft'}
+            {duplicating ? t('Duplicating…') : t('Duplicate as draft')}
           </button>}
         </div>
       </div>
-      {duplicateError && <p role="alert" className="mt-3 text-red-700">{duplicateError}</p>}
+      {duplicateError && <p role="alert" className="mt-3 text-red-700">{t(duplicateError)}</p>}
       <form onSubmit={applyFilters} onReset={() => setQuery('')} className="mt-4 flex flex-wrap items-end gap-3">
-        <label className="block text-sm">From date
+        <label className="block text-sm">{t('From date')}
           <input type="date" name="date_from" className="mt-1 block rounded border p-2" />
         </label>
-        <label className="block text-sm">To date
+        <label className="block text-sm">{t('To date')}
           <input type="date" name="date_to" className="mt-1 block rounded border p-2" />
         </label>
-        <label className="block text-sm">Activity type
+        <label className="block text-sm">{t('Activity type')}
           <select name="action" className="mt-1 block max-w-full rounded border p-2">
-            <option value="">All activity</option>
-            {Object.entries(ACTIVITY_LABELS).map(([action, label]) => <option key={action} value={action}>{label}</option>)}
+            <option value="">{t('All activity')}</option>
+            {Object.entries(ACTIVITY_LABELS).map(([action, label]) => <option key={action} value={action}>{t(label)}</option>)}
           </select>
         </label>
-        <button type="submit" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">Apply filters</button>
-        <button type="reset" className="rounded border px-4 py-2">Clear filters</button>
+        <button type="submit" className="rounded bg-brand-600 hover:bg-brand-700 px-4 py-2 text-white">{t('Apply filters')}</button>
+        <button type="reset" className="rounded border px-4 py-2">{t('Clear filters')}</button>
       </form>
       <AuditEntries key={query} eventId={event.id} query={query} />
     </section>
@@ -138,6 +141,7 @@ function EventActivity({ event }) {
 }
 
 export default function EventHistory() {
+  const { t, date } = useI18n()
   const [events, setEvents] = useState(null)
   const [status, setStatus] = useState('all')
   const [eventId, setEventId] = useState(null)
@@ -158,35 +162,35 @@ export default function EventHistory() {
     <main>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">Event history</h1>
-          <p className="mt-1 text-gray-600">Event lifecycle and the append-only activity timeline.</p>
+          <h1 className="text-3xl font-bold">{t('Event history')}</h1>
+          <p className="mt-1 text-gray-600">{t('Event lifecycle and the append-only activity timeline.')}</p>
         </div>
-        <Link to="/organizer/events" className="text-brand-700 underline">Manage events</Link>
+        <Link to="/organizer/events" className="text-brand-700 underline">{t('Manage events')}</Link>
       </div>
 
       <section className="mt-6 rounded-xl border bg-white p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <label className="text-sm font-medium">Status
+          <label className="text-sm font-medium">{t('Status')}
             <select className="mt-1 block rounded border p-2" value={status} onChange={(event) => setStatus(event.target.value)}>
-              {statuses.map((value) => <option key={value} value={value}>{value === 'all' ? 'All events' : statusLabel(value)}</option>)}
+              {statuses.map((value) => <option key={value} value={value}>{value === 'all' ? t('All events') : t(statusLabel(value))}</option>)}
             </select>
           </label>
-          <p className="text-sm text-gray-500">{visible.length} event{visible.length === 1 ? '' : 's'}</p>
+          <p className="text-sm text-gray-500">{visible.length === 1 ? t('1 event') : t('{count} events', { count: visible.length })}</p>
         </div>
-        {events === null && !error && <p className="mt-4">Loading events…</p>}
-        {visible.length === 0 && events !== null && <p className="mt-4 text-gray-600">No events have this status.</p>}
+        {events === null && !error && <p className="mt-4">{t('Loading events…')}</p>}
+        {visible.length === 0 && events !== null && <p className="mt-4 text-gray-600">{t('No events have this status.')}</p>}
         {visible.length > 0 && (
           <div className="relative mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="border-b text-gray-600"><tr><th className="p-3 font-medium">Event</th><th className="p-3 font-medium">Schedule</th><th className="p-3 font-medium">Status</th><th className="p-3 font-medium"><span className="sr-only">Timeline</span></th></tr></thead>
+              <thead className="border-b text-gray-600"><tr><th className="p-3 font-medium">{t('Event')}</th><th className="p-3 font-medium">{t('Schedule')}</th><th className="p-3 font-medium">{t('Status')}</th><th className="p-3 font-medium"><span className="sr-only">{t('Timeline')}</span></th></tr></thead>
               <tbody className="divide-y">
                 {visible.map((item) => {
                   const value = eventStatus(item)
                   return <tr key={item.id} className={item.id === current?.id ? 'bg-brand-50' : ''}>
                     <td className="p-3"><strong>{item.title}</strong><span className="block text-xs text-gray-500">{item.venue}</span></td>
-                    <td className="whitespace-nowrap p-3">{dateTime.format(new Date(item.starts_at))}<span className="block text-xs text-gray-500">to {dateTime.format(new Date(item.ends_at))}</span></td>
-                    <td className="p-3"><span className={`rounded px-2 py-1 text-xs font-medium ${badge[value]}`}>{statusLabel(value)}</span></td>
-                    <td className="p-3 text-right"><button className="text-brand-700 underline" onClick={() => setEventId(item.id)}>View activity</button></td>
+                    <td className="whitespace-nowrap p-3">{date(item.starts_at, SHORT)}<span className="block text-xs text-gray-500">{t('to {date}', { date: date(item.ends_at, SHORT) })}</span></td>
+                    <td className="p-3"><span className={`rounded px-2 py-1 text-xs font-medium ${badge[value]}`}>{t(statusLabel(value))}</span></td>
+                    <td className="p-3 text-right"><button className="text-brand-700 underline" onClick={() => setEventId(item.id)}>{t('View activity')}</button></td>
                   </tr>
                 })}
               </tbody>
@@ -195,7 +199,7 @@ export default function EventHistory() {
         )}
       </section>
 
-      {error && <p role="alert" className="mt-6 rounded border border-red-300 bg-red-50 p-4 text-red-700">{error}</p>}
+      {error && <p role="alert" className="mt-6 rounded border border-red-300 bg-red-50 p-4 text-red-700">{t(error)}</p>}
       {current && <EventActivity key={current.id} event={current} />}
     </main>
   )

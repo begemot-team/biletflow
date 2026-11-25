@@ -1,3 +1,5 @@
+import { ATTENDEE_CATEGORIES, STATUSES } from './support.js'
+
 export function eventStatus(event, now = new Date()) {
   if (event.cancelled_at) return 'cancelled'
   if (event.suspended_at) return 'suspended'
@@ -53,11 +55,51 @@ export function actionLabel(action) {
   return ACTIVITY_LABELS[action] ?? action.split('.').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }
 
-export const statusLabel = (status) => ({
+// Label keys for t().
+export const EVENT_STATUS = {
   draft: 'Draft',
   upcoming: 'Upcoming',
   active: 'Active',
   completed: 'Completed',
-  cancelled: 'Cancelled',
+  cancelled: 'Cancelled::event',
   suspended: 'Suspended',
-}[status] ?? status)
+}
+
+export const statusLabel = (status) => EVENT_STATUS[status] ?? status
+
+// Draft / published / cancelled, where the schedule does not matter.
+export function publicationLabel(event) {
+  if (event.cancelled_at) return EVENT_STATUS.cancelled
+  return event.published ? 'Published' : 'Draft'
+}
+
+export const ENTITY_LABELS = {
+  Event: 'Event #{id}',
+  TicketType: 'Ticket type #{id}',
+  Order: 'Order #{id}',
+  Payment: 'Payment #{id}',
+  Ticket: 'Ticket #{id}',
+  PromotionalCampaign: 'Campaign #{id}',
+  PromoRedemption: 'Promo code use #{id}',
+  StaffAssignment: 'Event Admin #{id}',
+  SupportCase: 'Support case #{id}',
+  PaidSalesActivation: 'Paid sales activation #{id}',
+}
+
+export function entityLabel(entry, t) {
+  const label = ENTITY_LABELS[entry.entity_type]
+  return label ? t(label, { id: entry.entity_id }) : `${entry.entity_type} #${entry.entity_id}`
+}
+
+// The backend stores descriptions in English with raw codes ("open -> resolved").
+export function auditDescription(entry, t) {
+  if (entry.action === 'support.opened') {
+    const category = ATTENDEE_CATEGORIES[entry.description.match(/^Category: (\w+)\.$/)?.[1]]
+    if (category) return `${t('Category')}: ${t(category)}`
+  }
+  if (entry.action === 'support.status_changed') {
+    const statuses = entry.description.split(' -> ').map((status) => STATUSES[status])
+    if (statuses.length === 2 && statuses.every(Boolean)) return statuses.map((status) => t(status)).join(' → ')
+  }
+  return t(entry.description)
+}

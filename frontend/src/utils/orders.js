@@ -19,15 +19,22 @@ export function actionPath(order) {
   return ACTION_LABEL[order?.action] ? `/orders/${order.id}/${order.action}` : null
 }
 
-// Shown on the second click, so nobody refunds by accident.
-export function confirmText(order) {
-  return order.action === 'refund'
-    ? `Refund ${formatAmount(order.total_minor)} and invalidate ${ticketCount(order.tickets)}?`
-    : `Cancel this registration and invalidate ${ticketCount(order.tickets)}?`
-}
+// The second button, after confirmText.
+export const CONFIRM_LABEL = { refund: 'Yes, refund', cancel: 'Yes, cancel registration' }
 
-function ticketCount(n) {
-  return n === 1 ? '1 ticket' : `${n} tickets`
+// Shown on the second click, so nobody refunds by accident: { text, values } for t().
+export function confirmText(order) {
+  const one = order.tickets === 1
+  if (order.action === 'refund') {
+    return {
+      text: one ? 'Refund {amount} and invalidate 1 ticket?' : 'Refund {amount} and invalidate {count} tickets?',
+      values: { amount: formatAmount(order.total_minor), count: order.tickets },
+    }
+  }
+  return {
+    text: one ? 'Cancel this registration and invalidate 1 ticket?' : 'Cancel this registration and invalidate {count} tickets?',
+    values: { count: order.tickets },
+  }
 }
 
 // Attendee side: only a confirmed order that cost nothing can be cancelled by

@@ -1,9 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
-import { DICTIONARIES, formatDate, formatDayMonth, normalizeLanguage, translate } from '../src/i18n/translate.js'
-import { ORDER_STATUS } from '../src/utils/orders.js'
+import { DICTIONARIES, SERVER_TEMPLATES, formatDate, formatDayMonth, normalizeLanguage, translate } from '../src/i18n/translate.js'
+import { STATUS_LABELS, STEP_LABELS, payoutReferenceError } from '../src/utils/activation.js'
+import { analyticsQuery } from '../src/utils/analytics.js'
+import { ACTIVITY_LABELS, ENTITY_LABELS, EVENT_STATUS } from '../src/utils/eventHistory.js'
+import { ACTION_LABEL, CONFIRM_LABEL, ORDER_STATUS, confirmText } from '../src/utils/orders.js'
 import { SHOWCASE } from '../src/utils/showcase.js'
+import { PERMISSIONS, validateStaffForm } from '../src/utils/staff.js'
 import { ATTENDEE_CATEGORIES, PLATFORM_CATEGORIES, STATUSES } from '../src/utils/support.js'
 
 const { kk, ru } = DICTIONARIES
@@ -39,6 +43,67 @@ test('statuses and categories shown to customers are translated', () => {
   // Performers keep their own names.
   for (const { title, place, fact } of SHOWCASE) labels.push(place, fact, ...(['Ye (Kanye West)', 'Backstreet Boys'].includes(title) ? [] : [title]))
   for (const label of labels) assert.ok(Object.hasOwn(ru, label), label)
+})
+
+test('labels and form errors shown to organizers are translated', () => {
+  const labels = [STEP_LABELS, STATUS_LABELS, ACTIVITY_LABELS, ENTITY_LABELS, EVENT_STATUS, ACTION_LABEL, CONFIRM_LABEL, PERMISSIONS].flatMap(Object.values)
+  labels.push('Published', ...SERVER_TEMPLATES)
+  for (const action of ['refund', 'cancel']) {
+    for (const tickets of [1, 2]) labels.push(confirmText({ action, tickets, total_minor: 100 }).text)
+  }
+  for (const value of ['', 'x'.repeat(65), '4400430123456789']) labels.push(payoutReferenceError(value))
+  const staff = [{ user_email: 'in@example.com' }]
+  for (const form of [{ email: '' }, { email: 'x' }, { email: 'me@example.com' }, { email: 'in@example.com' }, { email: 'new@example.com' }]) {
+    labels.push(...Object.values(validateStaffForm(form, staff, 'me@example.com')))
+  }
+  for (const filters of [{ from: '2026-11-01' }, { from: '2026-11-02', to: '2026-11-01' }]) {
+    assert.throws(() => analyticsQuery(filters), ({ message }) => Boolean(labels.push(message)))
+  }
+  // Set in state with setError / setNotice and translated when shown.
+  labels.push('Order #{id} refunded.', 'Order #{id} cancelled.', '{email} is now an Event Admin.', '{email} was removed.',
+    'Payout account connected.', 'Identity verified.', 'Terms accepted.', 'Activation fee paid. Paid tickets are on sale.',
+    'Enter a price in tenge, e.g. 2500 or 2500.50', 'No active BiletFlow account uses this email. Ask them to register first.')
+  for (const label of labels) assert.ok(Object.hasOwn(ru, label), label)
+})
+
+test('campaign portal errors are translated', () => {
+  const code = readFileSync(new URL('../src/mirat/campaignApi.js', import.meta.url), 'utf8')
+  const messages = [...code.matchAll(/(?:Error\(|[?:] |\|\| )'([A-Z][^']+\.)'/g)].map((match) => match[1])
+  assert.ok(messages.length >= 16)
+  messages.push('Could not confirm that the campaign was created.', 'You are logged out on this device; the server did not confirm ending the session.')
+  for (const message of messages) assert.ok(Object.hasOwn(ru, message), message)
+})
+
+test('pages have no text or date format that ignores the language', () => {
+  const names = new Set(['Begemot.com', 'Google Calendar ↗', 'SIM-PAYOUT-1', 'Campaign QR', 'biletflow'])
+  const root = new URL('../src/', import.meta.url)
+  const files = ['pages', 'components', 'auth'].flatMap((folder) =>
+    readdirSync(new URL(`${folder}/`, root)).filter((name) => name.endsWith('.jsx')).map((name) => `${folder}/${name}`))
+  const left = [...files, 'mirat/CampaignPortal.jsx'].flatMap((name) => {
+    const code = readFileSync(new URL(name, root), 'utf8')
+    const texts = [
+      ...code.matchAll(/(?<!=)>([^<>{}=;()]*\p{L}{2}[^<>{}=;()]*)<\//gu), // <p>Text</p>
+      ...code.matchAll(/\b(?:label|detail|placeholder|aria-label|title|alt)="([^"]*\p{L}{2}[^"]*)"/gu),
+      ...code.matchAll(/(DateTimeFormat\(['"]|toLocale\w*String\()/g),
+    ]
+    return texts.map((match) => match[1].trim()).filter((text) => !names.has(text)).map((text) => `${name}: ${text}`)
+  })
+  assert.deepEqual(left, [])
+})
+
+test('one English word can have two translations', () => {
+  assert.equal(translate('en', 'Cancelled::event'), 'Cancelled')
+  assert.equal(translate('ru', 'Cancelled'), 'Отменён')
+  assert.equal(translate('ru', 'Cancelled::event'), 'Отменено')
+  assert.equal(translate('ru', 'Unknown::event'), 'Unknown')
+})
+
+test('server messages with a value are translated', () => {
+  assert.equal(translate('en', 'Request failed (404).'), 'Request failed (404).')
+  assert.equal(translate('ru', 'Request failed (404).'), 'Запрос не выполнен (404).')
+  assert.equal(translate('ru', 'Unused tickets invalidated: 4. Holds closed: 1. Free orders cancelled: 2.'),
+    'Аннулировано неиспользованных билетов: 4. Закрыто броней: 1. Отменено бесплатных заказов: 2.')
+  assert.equal(translate('ru', 'Requestfailed (404).'), 'Requestfailed (404).')
 })
 
 test('missing texts and languages fall back to English', () => {
