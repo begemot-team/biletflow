@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import admin_views, views
 
 urlpatterns = [
     path("tickets/verify", views.VerifyTicket.as_view()),
@@ -18,6 +18,7 @@ urlpatterns = [
     path("events/<int:pk>/staff/<int:user_id>", views.EventStaffDetail.as_view()),
     path("events/<int:pk>/campaigns", views.CampaignList.as_view()),
     path("events/<int:pk>/audit-log", views.EventAuditLog.as_view()),
+    path("events/<int:pk>/report", admin_views.ReportEvent.as_view()),
     path("events/<int:pk>/sales", views.EventSales.as_view()),
     path("events/<int:pk>/analytics", views.EventAnalytics.as_view()),
     path("events/<int:pk>/activation", views.EventActivation.as_view()),
