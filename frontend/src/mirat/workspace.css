@@ -60,6 +60,11 @@
 .mw-admin-card { border: 1px solid #dce1d8; border-radius: 9px; padding: 18px; display: grid; grid-template-columns: 1fr minmax(230px, .65fr); gap: 20px; align-items: center; }
 .mw-admin-card h3 { font-size: 17px; font-weight: 650; }
 .mw-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.mw-admin-stats { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.mw-block { display: block; margin-top: 6px; }
+.mw-button-gap { margin-top: 8px; }
+.mw-export-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.mw-muted { border-top: 1px solid #e5e9e0; padding-top: 16px; font-size: 13px; }
 .mw-campaign-qr { min-width: 190px; }
 .mw-campaign-qr-card { margin-top: 10px; border: 3px dashed #b7811d; background: #fff8e8; padding: 12px; text-align: center; color: #624c19; border-radius: 8px; }
 .mw-campaign-qr-card > strong { display: block; font-size: 10px; letter-spacing: .08em; }
