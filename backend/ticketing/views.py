@@ -128,9 +128,18 @@ class EventDetail(generics.RetrieveUpdateDestroyAPIView):
         if serializer.validated_data.get("capacity", event.capacity) < services.reserved(event.pk):
             raise services.Conflict("Capacity cannot be below sold and reserved tickets.")
         description = services.describe_changes(event, serializer.validated_data)
+        # Only details a ticket holder acts on; the form sends every field, so
+        # compare values instead of trusting which keys were submitted.
+        notify_changes = {
+            field: value
+            for field, value in serializer.validated_data.items()
+            if field in services.ATTENDEE_FACING_FIELDS and getattr(event, field) != value
+        }
         serializer.save()
         if description:
             services.record_audit(event, request.user, "event.updated", event, description)
+        if notify_changes and event.published:
+            services.notify_event_updated(event, notify_changes)
         return Response(serializer.data)
 
     @transaction.atomic
@@ -193,6 +202,8 @@ class DuplicateEvent(APIView):
             starts_at=original.starts_at,
             ends_at=original.ends_at,
             capacity=original.capacity,
+            registration_opens_at=original.registration_opens_at,
+            registration_closes_at=original.registration_closes_at,
             refund_policy=original.refund_policy,
             published=False,
         )

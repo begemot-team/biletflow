@@ -10,7 +10,14 @@ const shortFmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeSty
 const MAX_TICKETS = 100 // per order, enforced by the API too
 
 // Why a ticket type cannot be bought right now, or null if it can.
-function closedReason(type, now) {
+// The event-level registration window (SRS 4.2) applies to every ticket type.
+function closedReason(type, now, event) {
+  if (event?.registration_opens_at && new Date(event.registration_opens_at) > now) {
+    return `Registration opens ${shortFmt.format(new Date(event.registration_opens_at))}`
+  }
+  if (event?.registration_closes_at && new Date(event.registration_closes_at) <= now) {
+    return 'Registration is closed'
+  }
   if (type.sales_start && new Date(type.sales_start) > now) {
     return `On sale from ${shortFmt.format(new Date(type.sales_start))}`
   }
@@ -119,7 +126,7 @@ function EventDetail() {
         <>
           <ul className="mt-3 divide-y rounded-xl border bg-white">
             {ticketTypes.map((t) => {
-              const reason = closedReason(t, now)
+              const reason = closedReason(t, now, event)
               const quantity = quantities[t.id] ?? 0
               return (
                 <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
