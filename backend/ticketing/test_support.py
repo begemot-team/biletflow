@@ -98,6 +98,10 @@ class SupportAccessTests(SupportHelpers, TestCase):
     def test_inbox_lists_and_filters_cases(self):
         response = self.as_user(self.owner).get("/api/support-cases?status=open")
         self.assertEqual([c["id"] for c in response.json()["results"]], [self.case])
+        response = self.as_user(self.owner).get("/api/support-cases?category=ticket_delivery")
+        self.assertEqual([c["id"] for c in response.json()["results"]], [self.case])
+        response = self.as_user(self.owner).get("/api/support-cases?category=refund")
+        self.assertEqual(response.json()["results"], [])
         response = self.as_user(self.owner).get("/api/support-cases?assigned=me")
         self.assertEqual(response.json()["results"], [])
         response = self.as_user(self.owner).get("/api/support-cases?event=abc")

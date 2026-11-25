@@ -52,6 +52,7 @@
 .mw-success { border-left: 4px solid #397352; }
 .mw-dashboard-link { text-align: left; color: #202820; cursor: pointer; }
 .mw-dashboard-link:hover { border-color: #397352; background: #f7faf5; }
+.mw-summary-count { display: inline-block; min-width: 30px; margin: 6px 0; border-radius: 999px; background: #dcefe2; color: #1f6137; padding: 2px 9px; font-weight: 700; }
 .mw-badge { display: inline-block; border-radius: 999px; padding: 4px 9px; background: #e8ece5; color: #3f493c; font-size: 11px; font-weight: 700; }
 .mw-badge.is-active { background: #dcefe2; color: #1f6137; }
 .mw-badge.is-suspended { background: #fbe2df; color: #8a3028; }
@@ -60,6 +61,21 @@
 .mw-admin-card { border: 1px solid #dce1d8; border-radius: 9px; padding: 18px; display: grid; grid-template-columns: 1fr minmax(230px, .65fr); gap: 20px; align-items: center; }
 .mw-admin-card h3 { font-size: 17px; font-weight: 650; }
 .mw-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.mw-admin-stats { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.mw-block { display: block; margin-top: 6px; }
+.mw-button-gap { margin-top: 8px; }
+.mw-export-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 20px 0; }
+.mw-muted { border-top: 1px solid #e5e9e0; padding-top: 16px; font-size: 13px; }
+.mw-break { max-width: 230px; overflow-wrap: anywhere; }
+.mw-report-filters { align-items: end; margin: 20px 0; }
+.mw-report-filters label { margin-bottom: 0; }
+.mw-filter-actions { display: flex; align-items: center; }
+.mw-filter-actions .mw-secondary { margin: 0 0 0 8px; }
+.mw-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+.mw-tabs .mw-secondary { margin: 0; }
+.mw-settings-form { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)) auto; gap: 16px; align-items: end; margin-top: 20px; }
+.mw-settings-form label { margin-bottom: 0; }
+.mw-settings-meta { border-top: 1px solid #e5e9e0; margin-top: 22px; padding-top: 12px; }
 .mw-campaign-qr { min-width: 190px; }
 .mw-campaign-qr-card { margin-top: 10px; border: 3px dashed #b7811d; background: #fff8e8; padding: 12px; text-align: center; color: #624c19; border-radius: 8px; }
 .mw-campaign-qr-card > strong { display: block; font-size: 10px; letter-spacing: .08em; }
@@ -67,3 +83,4 @@
 .mw-campaign-qr-card .mw-button { font-size: 12px; padding: 8px 10px; }
 .mw-campaign-qr-card small { display: block; margin-top: 9px; }
 @media (max-width: 700px) { .mw-admin-card { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .mw-settings-form { grid-template-columns: 1fr; } }
