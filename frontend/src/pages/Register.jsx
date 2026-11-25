@@ -75,7 +75,7 @@ function Register() {
           I want to organize events
         </label>
         {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={submitting} className="w-full rounded bg-gray-200 py-2.5 text-lg disabled:opacity-50">
+        <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
           {submitting ? 'Creating account…' : 'Register'}
         </button>
       </form>

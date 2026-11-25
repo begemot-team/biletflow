@@ -47,14 +47,14 @@ function Login() {
           value={form.email} onChange={update} error={errors.email} />
         <div className="relative">
           <Field label="Password" name="password" type="password" autoComplete="current-password" required
-            value={form.password} onChange={update} error={errors.password} />
+            value={form.password} onChange={update} error={errors.password} className="pr-28" />
           <Link to="/forgot-password" state={location.state}
-            className="absolute right-3 top-2.5 text-sm text-indigo-700 underline">
+            className="absolute right-3 top-3 text-sm text-indigo-700 underline">
             Forgot?
           </Link>
         </div>
         {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={submitting} className="w-full rounded bg-gray-200 py-2.5 text-lg disabled:opacity-50">
+        <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
           {submitting ? 'Logging in…' : 'Login'}
         </button>
       </form>

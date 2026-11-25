@@ -49,7 +49,7 @@ function ResetPassword() {
     return (
       <AuthCard title="Password changed">
         <p role="status">Your password was changed. Log in with the new one.</p>
-        <Link to="/login" state={location.state} className="block w-full rounded bg-gray-200 py-2.5 text-center text-lg">
+        <Link to="/login" state={location.state} className="block w-full rounded bg-black py-2.5 text-center text-lg text-white">
           Login
         </Link>
       </AuthCard>
@@ -71,14 +71,14 @@ function ResetPassword() {
             <span className="text-sm text-gray-700">Paste the reset email (the uid= and token= lines)</span>
             <textarea value={code} onChange={(e) => setCode(e.target.value)} rows={3} required
               aria-invalid={Boolean(errors.code)} spellCheck={false}
-              className="mt-1 w-full rounded bg-gray-400 px-3 py-2 font-mono text-sm text-white focus:outline-2 focus:outline-indigo-500" />
+              className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 focus:outline-2 focus:outline-indigo-500" />
           </label>
         )}
         {errors.code && <p role="alert" className="text-sm text-red-600">{errors.code}</p>}
         <Field label="New password" name="password" type="password" autoComplete="new-password" required
           value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} />
         {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-        <button disabled={submitting} className="w-full rounded bg-gray-200 py-2.5 text-lg disabled:opacity-50">
+        <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
           {submitting ? 'Saving…' : 'Set new password'}
         </button>
       </form>

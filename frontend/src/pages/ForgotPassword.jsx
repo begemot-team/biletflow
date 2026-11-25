@@ -41,7 +41,7 @@ function ForgotPassword() {
             If an account exists for <strong>{email.trim()}</strong>, we sent it a reset code. It works for one hour.
           </p>
           <Link to="/reset-password" state={location.state}
-            className="block w-full rounded bg-gray-200 py-2.5 text-center text-lg">
+            className="block w-full rounded bg-black py-2.5 text-center text-lg text-white">
             I have the code
           </Link>
         </div>
@@ -51,7 +51,7 @@ function ForgotPassword() {
           <Field label="Email" name="email" type="email" autoComplete="email" required
             value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
           {errors.form && <p role="alert" className="text-sm text-red-600">{errors.form}</p>}
-          <button disabled={submitting} className="w-full rounded bg-gray-200 py-2.5 text-lg disabled:opacity-50">
+          <button disabled={submitting} className="w-full rounded bg-black py-2.5 text-lg text-white disabled:opacity-50">
             {submitting ? 'Sending…' : 'Send reset code'}
           </button>
         </form>
